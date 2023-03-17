@@ -1,0 +1,41 @@
+version: '1'
+services:
+    party1:
+        image: silentot:test
+        container_name: silentot-test
+        command: ./build/main -v 2 -nn 27 -silver
+
+# version: '1'
+# services:
+#     party1:
+#         image: silentot:test
+#         container_name: libote-party1
+#         command: ./libOTe/out/build/linux/frontend/frontend_libOTe -s -silver
+#         labels:
+#             com.docker-tc.enabled: 0
+#             com.docker-tc.limit: 1mbps
+#         volumes:
+#         depends_on:
+#             - traffic-shape
+#     party2:
+#         image: silentot:test
+#         container_name: libote-party2
+#         command: ./libOTe/out/build/linux/frontend/frontend_libOTe -s
+#         labels:
+#             com.docker-tc.enabled: 0
+#             com.docker-tc.limit: 1mbps
+#         volumes:
+#         depends_on:
+#             - traffic-shape
+            
+#     traffic-shape:
+#         image: lukaszlach/docker-tc
+#         network_mode: "host"
+#         environment:
+#             HTTP_BIND: "${HTTP_BIND:-127.0.0.1}"
+#             HTTP_PORT: "${HTTP_PORT:-4080}"
+#         volumes:
+#             - /var/run/docker.sock:/var/run/docker.sock
+#             - /var/docker-tc:/var/docker-tc
+#         cap_add:
+#             - NET_ADMIN

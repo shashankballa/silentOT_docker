@@ -1,3 +1,0 @@
-/home/lgw/c++/SilentOT/build/CMakeFiles/main.dir
-/home/lgw/c++/SilentOT/build/CMakeFiles/edit_cache.dir
-/home/lgw/c++/SilentOT/build/CMakeFiles/rebuild_cache.dir
