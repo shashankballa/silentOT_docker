@@ -17,10 +17,8 @@ using namespace std;
 using namespace tests_libOTe;
 
 template<typename Choice>
-void checkCorrelated(
-    span<block> Ar, span<block> Bs,
-    Choice& choice, block delta, u64 n,
-    bool verbose,
+void checkCorrelated( span<block> Ar, span<block> Bs,
+    Choice& choice, block delta, u64 n, bool verbose,
     ChoiceBitPacking packing)
 {
 
@@ -101,10 +99,8 @@ void checkCorrelated(
             std::cout << "checkCorrelated: passed!" << std::endl;
 }
 
-void checkRandom(
-    span<block> messages, span<std::array<block, 2>>messages2,
-    BitVector& choice, u64 n,
-    bool verbose)
+void checkRandom(span<block> messages, span<std::array<block, 2>>messages2,
+    BitVector& choice, u64 n, bool verbose)
 {
 
     if (messages.size() != n)
@@ -152,7 +148,8 @@ void checkRandom(
             std::cout << "checkRandom: passed!" << std::endl;
 }
 
-void checkChosen(BitVector& choiceBits, span<block> recv, span<std::array<block, 2>>  sender)
+void checkChosen(BitVector& choiceBits, span<block> recv, 
+    span<std::array<block, 2>>  sender)
 {
     for (u64 i = 0; i < choiceBits.size(); ++i)
     {
@@ -179,9 +176,8 @@ void checkChosen(BitVector& choiceBits, span<block> recv, span<std::array<block,
     }
 }
 
-void silent_rot_recv(
-    std::vector<block> &messages, BitVector &choices, std::string ip, PRNG prng, 
-    u64 numThreads, bool verbose = false)
+void silent_rot_recv(std::vector<block> &messages, BitVector &choices, 
+    std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
 {
     std::string tag = "silent_rot_recv";
     u64 numOTs = messages.size();
@@ -251,9 +247,8 @@ void silent_rot_recv(
     }
 }
 
-void silent_rot_send(
-    std::vector<std::array<block, 2>> &messages, std::string ip, PRNG prng, 
-    u64 numThreads, bool verbose = false)
+void silent_rot_send(std::vector<std::array<block, 2>> &messages, 
+    std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
 {
     std::string tag = "silent_rot_send";
     u64 numOTs = messages.size();
@@ -324,8 +319,8 @@ void silent_rot_send(
     }
 }
 
-void silent_rot_test(CLP& cmd){
-
+void silent_rot_test(CLP& cmd)
+{
     auto numOTs = cmd.isSet("nn")
         ? (1 << cmd.get<int>("nn"))
         : cmd.getOr("n", 0);
@@ -336,33 +331,50 @@ void silent_rot_test(CLP& cmd){
     if (numOTs == 0)
     numOTs = 1 << 20;
 
-    block prng_seed = sysRandomSeed();
+    PRNG prng(sysRandomSeed());
 
     std::vector<std::array<block, 2>> messages_s(numOTs);
     std::vector<block> messages_r(numOTs);
     BitVector choices(numOTs);
+    choices.randomize(prng);
+    choices[0] = 1;
+
+    BitVector choices_old = choices;
 
     auto thrd = std::thread([&] {
-        try { silent_rot_send(messages_s, ip, prng_seed, numThreads, verbose); }
+        try { silent_rot_send(messages_s, ip, prng, numThreads, verbose); }
         catch (std::exception& e)
         {
             lout << e.what() << std::endl;
         }
         });
 
-    try { silent_rot_recv(messages_r, choices, ip, prng_seed, numThreads, verbose); }
+    try { silent_rot_recv(messages_r, choices, ip, prng, numThreads, verbose); }
     catch (std::exception& e)
     {
         lout << e.what() << std::endl;
     }
     thrd.join();
+
+    std::cout << "After ROT:"<< std::endl;
+    std::cout << "+ messages_s[0][0] -> "     <<  messages_s[0][0] << std::endl;
+    std::cout << "+ messages_s[0][1] -> "     <<  messages_s[0][1] << std::endl;
+    std::cout << "+ choices[0]       -> "     <<  choices[0]       << std::endl;
+    std::cout << "+ messages_r[0]    -> "     <<  messages_r[0]    << std::endl;
+
+    std::cout << "+ choices_old == choices? " << std ::endl;
+    std::cout << "-+ " << std::boolalpha << (choices_old==choices) << std ::endl;
+    std::cout << "-+ choices_old[:4] : "      << choices_old[0]    << choices_old[1] 
+              << choices_old[2]               << choices_old[3]    << std ::endl;
+    std::cout << "-+ choices[:4]     : "      << choices[0]        << choices[1]
+              << choices[2]                   << choices[3]        << std ::endl;
+    std::cout << std ::endl;
     
     checkRandom(messages_r, messages_s, choices, numOTs, verbose);
 }
 
-void silent_cot_recv(
-    std::vector<block> &messages, BitVector &choices, std::string ip, PRNG prng, 
-    u64 numThreads, bool verbose = false)
+void silent_cot_recv(std::vector<block> &messages, BitVector &choices, 
+    std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
 {
     std::string tag = "silent_cot_recv";
     u64 numOTs = messages.size();
@@ -432,9 +444,8 @@ void silent_cot_recv(
     }
 }
 
-void silent_cot_send(
-    std::vector<block> &messages, block delta, std::string ip, PRNG prng, 
-    u64 numThreads, bool verbose = false)
+void silent_cot_send(std::vector<block> &messages, block delta, 
+    std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
 {
     std::string tag = "silent_cot_send";
     u64 numOTs = messages.size();
@@ -505,8 +516,8 @@ void silent_cot_send(
     }
 }
 
-void silent_cot_test(CLP& cmd){
-
+void silent_cot_test(CLP& cmd)
+{
     auto numOTs = cmd.isSet("nn")
         ? (1 << cmd.get<int>("nn"))
         : cmd.getOr("n", 0);
@@ -517,32 +528,49 @@ void silent_cot_test(CLP& cmd){
     if (numOTs == 0)
     numOTs = 1 << 20;
 
-    block prng_seed = sysRandomSeed();
-
-    PRNG prng(prng_seed);
+    PRNG prng(sysRandomSeed());
 
     block delta = prng.get();
 
     auto ot_type = OTType::Correlated;
 
     std::vector<block> messages_s(numOTs);
+    
     std::vector<block> messages_r(numOTs);
     BitVector choices(numOTs);
+    choices.randomize(prng);
+    choices[0] = 1;
+
+    BitVector choices_old = choices;
 
     auto thrd = std::thread([&] {
-        try { silent_cot_send(messages_s, delta, ip, prng_seed, numThreads, verbose); }
+        try { silent_cot_send(messages_s, delta, ip, prng, numThreads, verbose); }
         catch (std::exception& e)
         {
             lout << e.what() << std::endl;
         }
         });
 
-    try { silent_cot_recv(messages_r, choices, ip, prng_seed, numThreads, verbose); }
+    try { silent_cot_recv(messages_r, choices, ip, prng, numThreads, verbose); }
     catch (std::exception& e)
     {
         lout << e.what() << std::endl;
     }
     thrd.join();
+
+    std::cout << "After COT:"<< std::endl;
+    std::cout << "+ messages_s[0]       -> "  <<  messages_s[0]    << std::endl;
+    std::cout << "+ messages_s[0]^delta -> "  <<  (messages_s[0] ^  delta)  << std::endl;
+    std::cout << "+ choices[0]          -> "  <<  choices[0]       << std::endl;
+    std::cout << "+ messages_r[0]       -> "  <<  messages_r[0]    << std::endl;
+
+    std::cout << "+ choices_old == choices? " << std ::endl;
+    std::cout << "-+ " << std::boolalpha << (choices_old==choices) << std ::endl;
+    std::cout << "-+ choices_old[:4] : "      << choices_old[0]    << choices_old[1] 
+              << choices_old[2]               << choices_old[3]    << std ::endl;
+    std::cout << "-+ choices[:4]     : "      << choices[0]        << choices[1]
+              << choices[2]                   << choices[3]        << std ::endl;
+    std::cout << std ::endl;
     
     checkCorrelated(messages_r, messages_s, choices, delta, numOTs, verbose, ChoiceBitPacking::False);
 }
