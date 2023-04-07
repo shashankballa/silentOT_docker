@@ -290,13 +290,13 @@ void silent_rot_send(std::vector<std::array<block, 2>> &messages,
     auto protocol = sender.silentSend(messages, prng, chl);
 
 /*
-    chain of function from silentSend to LPN with slv5 codes:
+    chain of functions from silentSend to LPN with slv5 codes:
     silentSend
         silentSendInplace
             configure
             genSilentBaseOts
-            expand
-            ferretMalCheck // only malicious
+            expand - pprf (ggm tree) expansion
+            ferretMalCheck - only for malicious
             compress
                 mEncoder.dualEncode
                     mR.template dualEncode<T>
