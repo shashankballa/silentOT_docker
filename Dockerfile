@@ -5,7 +5,11 @@ RUN apt-get update \
     DEBIAN_FRONTEND=noninteractive apt-get install \
         -y vim git make g++ cmake libtool python
 
-RUN git clone https://github.com/osu-crypto/libOTe.git
+COPY . SilentOT/
+
+WORKDIR /SilentOT
+
+RUN git submodule update --init
 
 RUN cd libOTe \
     && \
@@ -29,10 +33,6 @@ RUN cd libOTe \
     su \
     && \
     cmake --install out/build/linux
-
-COPY . SilentOT/
-
-WORKDIR /SilentOT
 
 RUN mkdir build \
     && \

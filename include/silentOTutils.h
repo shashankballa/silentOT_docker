@@ -289,6 +289,12 @@ void silent_rot_send(std::vector<std::array<block, 2>> &messages,
     // create the protocol object.
     auto protocol = sender.silentSend(messages, prng, chl);
 
+/*
+    chain of function from silentSend to LPN with slv5 codes:
+    - silentSend
+    - silentSendInplace
+*/
+
     // run the protocol
     if (numThreads <= 1)
         cp::sync_wait(protocol);
