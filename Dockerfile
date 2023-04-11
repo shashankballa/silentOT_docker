@@ -3,8 +3,8 @@ FROM debian:stable
 RUN apt-get update \
     && \
     DEBIAN_FRONTEND=noninteractive apt-get install \
-        -y vim git make g++ cmake libtool python
-
+        -y vim git make g++ cmake libtool python \
+        libboost-all-dev libssl-dev libgmp-dev
 
 # Copy, build and install libOTe -----------------------------------------------
 
