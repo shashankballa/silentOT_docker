@@ -1,9 +1,9 @@
-FROM debian:stable
+FROM ubuntu:22.04
 
 RUN apt-get update \
     && \
-    DEBIAN_FRONTEND=noninteractive apt-get install \
-        -y vim git make g++ cmake libtool python \
+    apt-get install -y \
+        vim git make g++ cmake libtool python3 \
         libboost-all-dev libssl-dev libgmp-dev
 
 # Copy, build and install libOTe -----------------------------------------------
