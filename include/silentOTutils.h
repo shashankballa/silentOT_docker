@@ -2,7 +2,6 @@
 #include <libOTe/TwoChooseOne/Silent/SilentOtExtSender.h>
 #include <libOTe/TwoChooseOne/Iknp/IknpOtExtReceiver.h>
 #include <libOTe/TwoChooseOne/Iknp/IknpOtExtSender.h>
-#include <libOTe/Tools/LDPC/LdpcImpulseDist.h>
 #include <libOTe/Tools/LDPC/Util.h>
 #include <libOTe_Tests/Common.h>
 #include <cryptoTools/Common/TestCollection.h>
@@ -18,6 +17,33 @@
 using namespace osuCrypto;
 using namespace std;
 using namespace tests_libOTe;
+
+void fakeBase(u64 n,
+    u64 s,
+    u64 threads,
+    PRNG& prng,
+    SilentOtExtReceiver& recver, SilentOtExtSender& sender)
+{
+    sender.configure(n, s, threads);
+    auto count = sender.silentBaseOtCount();
+    std::vector<std::array<block, 2>> msg2(count);
+    for (u64 i = 0; i < msg2.size(); ++i)
+    {
+        msg2[i][0] = prng.get();
+        msg2[i][1] = prng.get();
+    }
+    sender.setSilentBaseOts(msg2);
+
+    // fake base OTs.
+    {
+        recver.configure(n, s, threads);
+        BitVector choices = recver.sampleBaseChoiceBits(prng);
+        std::vector<block> msg(choices.size());
+        for (u64 i = 0; i < msg.size(); ++i)
+            msg[i] = msg2[i][choices[i]];
+        recver.setSilentBaseOts(msg);
+    }
+}
 
 template<typename Choice>
 void checkCorrelated( span<block> Ar, span<block> Bs,
@@ -179,416 +205,459 @@ void checkChosen(BitVector& choiceBits, span<block> recv,
     }
 }
 
-void silent_rot_recv(std::vector<block> &messages, BitVector &choices, 
-    std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
-{
-    std::string tag = "silent_rot_recv";
-    u64 numOTs = messages.size();
+// void silent_rot_recv(std::vector<block> &messages, BitVector &choices, 
+//     std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
+// {
+//     std::string tag = "silent_rot_recv";
+//     u64 numOTs = messages.size();
 
-    auto malicious = SilentSecType::SemiHonest;
-    auto multType  = MultType::slv5;
+//     auto malicious = SilentSecType::SemiHonest;
+//     auto multType  = MultType::slv5;
         
-    // get up the networking
-    auto chl = cp::asioConnect(ip, false);
+//     // get up the networking
+//     auto chl = cp::asioConnect(ip, false);
 
-    macoro::thread_pool threadPool;
-    auto work = threadPool.make_work();
-    if (numThreads > 1)
-        threadPool.create_threads(numThreads);
+//     macoro::thread_pool threadPool;
+//     auto work = threadPool.make_work();
+//     if (numThreads > 1)
+//         threadPool.create_threads(numThreads);
 
-    Timer timer;
-    auto start = timer.setTimePoint("start");
+//     Timer timer;
+//     auto start = timer.setTimePoint("start");
 
-    SilentOtExtReceiver recver;
+//     SilentOtExtReceiver recver;
 
-    // optionally request the LPN encoding matrix.
-    recver.mMultType = multType;
+//     // optionally request the LPN encoding matrix.
+//     recver.mMultType = multType;
 
-    // configure the sender. optional for semi honest security...
-    recver.configure(numOTs, 2, numThreads, malicious);
+//     // configure the sender. optional for semi honest security...
+//     recver.configure(numOTs, 2, numThreads, malicious);
 
-    // optional. You can request that the base ot are generated either
-    // using just base OTs (few rounds, more computation) or 128 base OTs and then extend those. 
-    // The default is the latter, base + extension.
-    // type == SilentBaseType::BaseExtend
-    cp::sync_wait(recver.genSilentBaseOts(prng, chl, true));
+//     // optional. You can request that the base ot are generated either
+//     // using just base OTs (few rounds, more computation) or 128 base OTs and then extend those. 
+//     // The default is the latter, base + extension.
+//     // type == SilentBaseType::BaseExtend
+//     cp::sync_wait(recver.genSilentBaseOts(prng, chl, true));
 
-    // std::vector<block> messages(numOTs);
-    // BitVector choices(numOTs);
+//     // std::vector<block> messages(numOTs);
+//     // BitVector choices(numOTs);
 
-    // create the protocol object.
-    auto protocol = recver.silentReceive(choices, messages, prng, chl);
+//     // create the protocol object.
+//     auto protocol = recver.silentReceive(choices, messages, prng, chl);
 
-    // run the protocol
-    if (numThreads <= 1)
-        cp::sync_wait(protocol);
-    else
-        // launch the protocol on the thread pool.
-        cp::sync_wait(std::move(protocol) | macoro::start_on(threadPool));
+//     // run the protocol
+//     if (numThreads <= 1)
+//         cp::sync_wait(protocol);
+//     else
+//         // launch the protocol on the thread pool.
+//         cp::sync_wait(std::move(protocol) | macoro::start_on(threadPool));
 
-    // choices, messages has been populated with random OT messages.
-    // messages[i] = sender.message[i][choices[i]]
-    // See the header for other options.
+//     // choices, messages has been populated with random OT messages.
+//     // messages[i] = sender.message[i][choices[i]]
+//     // See the header for other options.
     
-    auto end = timer.setTimePoint("end");
-    auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+//     auto end = timer.setTimePoint("end");
+//     auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    u64 com = chl.bytesReceived() + chl.bytesSent();
+//     u64 com = chl.bytesReceived() + chl.bytesSent();
 
-    if (verbose)
-    {
-        std::string typeStr = "be ";
-        lout << tag <<
-        " n:" << Color::Green << std::setw(6) << std::setfill(' ') << numOTs << Color::Default <<
-        " type: " << Color::Green << typeStr << Color::Default <<
-        "   ||   " << Color::Green <<
-        std::setw(6) << std::setfill(' ') << milli << " ms   " <<
-        std::setw(6) << std::setfill(' ') << com << " bytes" << std::endl << Color::Default;
+//     if (verbose)
+//     {
+//         std::string typeStr = "be ";
+//         lout << tag <<
+//         " n:" << Color::Green << std::setw(6) << std::setfill(' ') << numOTs << Color::Default <<
+//         " type: " << Color::Green << typeStr << Color::Default <<
+//         "   ||   " << Color::Green <<
+//         std::setw(6) << std::setfill(' ') << milli << " ms   " <<
+//         std::setw(6) << std::setfill(' ') << com << " bytes" << std::endl << Color::Default;
 
-        lout << gTimer << std::endl;
-        lout << " **** receiver ****\n" << timer << std::endl;
-    }
-}
+//         lout << gTimer << std::endl;
+//         lout << " **** receiver ****\n" << timer << std::endl;
+//     }
+// }
 
-void silent_rot_send(std::vector<std::array<block, 2>> &messages, 
-    std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
-{
-    std::string tag = "silent_rot_send";
-    u64 numOTs = messages.size();
+// void silent_rot_send(std::vector<std::array<block, 2>> &messages, 
+//     std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
+// {
+//     std::string tag = "silent_rot_send";
+//     u64 numOTs = messages.size();
 
-    auto malicious = SilentSecType::SemiHonest;
-    auto multType = MultType::slv5;
+//     auto malicious = SilentSecType::SemiHonest;
 
-    std::vector<SilentBaseType> types;
-    types.push_back(SilentBaseType::BaseExtend);
+//     // We will only work with slv5 codes for Fablivious' LPN.
+//     auto multType = MultType::slv5;
+
+//     std::vector<SilentBaseType> types;
+//     types.push_back(SilentBaseType::BaseExtend);
         
-    // get up the networking
-    auto chl = cp::asioConnect(ip, true);
+//     // get up the networking
+//     auto chl = cp::asioConnect(ip, true);
 
-    macoro::thread_pool threadPool;
-    auto work = threadPool.make_work();
-    if (numThreads > 1)
-        threadPool.create_threads(numThreads);
+//     macoro::thread_pool threadPool;
+//     auto work = threadPool.make_work();
+//     if (numThreads > 1)
+//         threadPool.create_threads(numThreads);
 
-    Timer timer;
-    auto start = timer.setTimePoint("start");
+//     Timer timer;
+//     auto start = timer.setTimePoint("start");
 
-    SilentOtExtSender sender;
+//     SilentOtExtSender sender;
 
-    // optionally request the LPN encoding matrix.
-    sender.mMultType = multType;
+//     // optionally request the LPN encoding matrix.
+//     sender.mMultType = multType;
 
-    // optionally configure the sender. default is semi honest security.
-    sender.configure(numOTs, 2, numThreads, malicious);
+//     // optionally configure the sender. default is semi honest security.
+//     sender.configure(numOTs, 2, numThreads, malicious);
 
-    // optional. You can request that the base ot are generated either
-    // using just base OTs (few rounds, more computation) or 128 base OTs and then extend those. 
-    // The default is the latter, base + extension.
-    // type == SilentBaseType::BaseExtend
-    cp::sync_wait(sender.genSilentBaseOts(prng, chl, true));
+//     // optional. You can request that the base ot are generated either
+//     // using just base OTs (few rounds, more computation) or 128 base OTs and then extend those. 
+//     // The default is the latter, base + extension.
+//     // type == SilentBaseType::BaseExtend
+//     cp::sync_wait(sender.genSilentBaseOts(prng, chl, true));
 
-    // std::vector<std::array<block, 2>> messages(numOTs);
+//     // std::vector<std::array<block, 2>> messages(numOTs);
 
-    // create the protocol object.
-    auto protocol = sender.silentSend(messages, prng, chl);
+//     // create the protocol object.
+//     auto protocol = sender.silentSend(messages, prng, chl); 
 
-/*
-    chain of functions from silentSend to LPN with slv5 codes:
-    silentSend
-        silentSendInplace
-            configure
-            genSilentBaseOts
-            expand - pprf (ggm tree) expansion
-            ferretMalCheck - only for malicious
-            compress
-                mEncoder.dualEncode
-                    mR.template dualEncode<T>
-                    mL.template dualEncode<T>
-        hash
-*/
+// /*
+//     chain of functions from silentSend to LPN with slv5 codes:
+//     silentSend
+//         silentSendInplace
+//             (configure) - skipped, already configured
+//             (genSilentBaseOts) - skipped, already generated
+//             expand - pprf (ggm tree) expansion
+//             (ferretMalCheck) - iff SilentSecType is malicious
+//             compress
+//                 mEncoder.dualEncode
+//                     mR.template dualEncode<T>
+//                     mL.template dualEncode<T>
+//         hash
+// */
 
-    // run the protocol
-    if (numThreads <= 1)
-        cp::sync_wait(protocol);
-    else
-        // launch the protocol on the thread pool.
-        cp::sync_wait(std::move(protocol) | macoro::start_on(threadPool));
+//     // run the protocol
+//     if (numThreads <= 1)
+//         cp::sync_wait(protocol);
+//     else
+//         // launch the protocol on the thread pool.
+//         cp::sync_wait(std::move(protocol) | macoro::start_on(threadPool));
 
-    // messages has been populated with random OT messages.
-    // See the header for other options.
+//     // messages has been populated with random OT messages.
+//     // See the header for other options.
 
-    auto end = timer.setTimePoint("end");
-    auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+//     auto end = timer.setTimePoint("end");
+//     auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    u64 com = chl.bytesReceived() + chl.bytesSent();
+//     u64 com = chl.bytesReceived() + chl.bytesSent();
 
-    if (verbose)
-    {
-        std::string typeStr = "be ";
-        lout << tag <<
-        " n:" << Color::Green << std::setw(6) << std::setfill(' ') << numOTs << Color::Default <<
-        " type: " << Color::Green << typeStr << Color::Default <<
-        "   ||   " << Color::Green <<
-        std::setw(6) << std::setfill(' ') << milli << " ms   " <<
-        std::setw(6) << std::setfill(' ') << com << " bytes" << std::endl << Color::Default;
+//     if (verbose)
+//     {
+//         std::string typeStr = "be ";
+//         lout << tag <<
+//         " n:" << Color::Green << std::setw(6) << std::setfill(' ') << numOTs << Color::Default <<
+//         " type: " << Color::Green << typeStr << Color::Default <<
+//         "   ||   " << Color::Green <<
+//         std::setw(6) << std::setfill(' ') << milli << " ms   " <<
+//         std::setw(6) << std::setfill(' ') << com << " bytes" << std::endl << Color::Default;
 
-        lout << gTimer << std::endl;
-        lout << " **** sender ****\n" << timer << std::endl;
-    }
-}
+//         lout << gTimer << std::endl;
+//         lout << " **** sender ****\n" << timer << std::endl;
+//     }
+// }
 
-void silent_rot_test(CLP& cmd)
+// void silent_rot_test(CLP& cmd)
+// {
+//     // Number of OTs to perform is 2^nn or n if nn is not set.
+//     auto numOTs = cmd.isSet("nn")
+//         ? (1 << cmd.get<int>("nn"))
+//         : cmd.getOr("n", 0);
+    
+//     // Number of threads to use in the protocol.
+//     auto numThreads = cmd.getOr("t", 4);
+
+//     // I think this is IP address and port to connect to.
+//     auto ip = cmd.getOr<std::string>("ip", "localhost:1212");
+//     bool verbose = (cmd.getOr("v", 1) >= 1);
+
+//     if (numOTs == 0)
+//     numOTs = 1 << 20;
+
+//     PRNG prng(sysRandomSeed());
+
+//     // Each message is 1 block.
+//     // The sender needs to input 2 messages for every OT.
+//     // messages_s is of shape (numOTs, 2, block)
+//     // messages_s is supplied by the sender. Its an input to the protocol
+//     std::vector<std::array<block, 2>> messages_s(numOTs);
+
+//     // The receiver receives 1 message for every OT.
+//     // messages_r is of shape (numOTs, block)
+//     // messages_r is received by the receiver. Its an output of the protocol
+//     std::vector<block> messages_r(numOTs);
+
+//     // The receiver needs to input a choice bit for every OT.
+//     // BitVector choices(numOTs);
+//     // choices.randomize(prng);
+
+//     // BitVector choices_old = choices;
+    
+//     // make the first bit in choices 1 by or-ing with 1.
+//     string mask_str =  string(numOTs - 1, '1') + '1';
+//     // BitVector mask(mask_str);
+
+//     BitVector choices(mask_str);
+    
+//     std::cout << "-+ choices[:4]     : "      << choices[0]        << choices[1]
+//               << choices[2]                   << choices[3]        << std ::endl;
+
+//     auto thrd = std::thread([&] {
+//         try { silent_rot_send(messages_s, ip, prng, numThreads, verbose); }
+//         catch (std::exception& e)
+//         {
+//             lout << e.what() << std::endl;
+//         }
+//         });
+
+//     try { silent_rot_recv(messages_r, choices, ip, prng, numThreads, verbose); }
+//     catch (std::exception& e)
+//     {
+//         lout << e.what() << std::endl;
+//     }
+//     thrd.join();
+
+//     std::cout << "After ROT:"<< std::endl;
+//     std::cout << "+ messages_s[0][0] -> "     <<  messages_s[0][0] << std::endl;
+//     std::cout << "+ messages_s[0][1] -> "     <<  messages_s[0][1] << std::endl;
+//     std::cout << "+ choices[0]       -> "     <<  choices[0]       << std::endl;
+//     std::cout << "+ messages_r[0]    -> "     <<  messages_r[0]    << std::endl;
+
+//     // std::cout << "+ choices_old == choices? " << std ::endl;
+//     // std::cout << "-+ " << std::boolalpha << (choices_old==choices) << std ::endl;
+//     // std::cout << "-+ choices_old[:4] : "      << choices_old[0]    << choices_old[1] 
+//     //           << choices_old[2]               << choices_old[3]    << std ::endl;
+//     std::cout << "-+ choices[:4]     : "      << choices[0]        << choices[1]
+//               << choices[2]                   << choices[3]        << std ::endl;
+//     std::cout << std ::endl;
+    
+//     checkRandom(messages_r, messages_s, choices, numOTs, verbose);
+// }
+
+// void silent_cot_recv(std::vector<block> &messages, BitVector &choices, 
+//     std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
+// {
+//     std::string tag = "silent_cot_recv";
+//     u64 numOTs = messages.size();
+
+//     auto malicious = SilentSecType::SemiHonest;
+//     auto multType  = MultType::slv5;
+        
+//     // get up the networking
+//     auto chl = cp::asioConnect(ip, false);
+
+//     macoro::thread_pool threadPool;
+//     auto work = threadPool.make_work();
+//     if (numThreads > 1)
+//         threadPool.create_threads(numThreads);
+
+//     Timer timer;
+//     auto start = timer.setTimePoint("start");
+
+//     SilentOtExtReceiver recver;
+
+//     // optionally request the LPN encoding matrix.
+//     recver.mMultType = multType;
+
+//     // configure the sender. optional for semi honest security...
+//     recver.configure(numOTs, 2, numThreads, malicious);
+
+//     // optional. You can request that the base ot are generated either
+//     // using just base OTs (few rounds, more computation) or 128 base OTs and then extend those. 
+//     // The default is the latter, base + extension.
+//     // type == SilentBaseType::BaseExtend
+//     cp::sync_wait(recver.genSilentBaseOts(prng, chl, true));
+
+//     // std::vector<block> messages(numOTs);
+//     // BitVector choices(numOTs);
+
+//     // create the protocol object.
+//     auto protocol = recver.silentReceive(choices, messages, prng, chl, OTType::Correlated);
+
+//     // run the protocol
+//     if (numThreads <= 1)
+//         cp::sync_wait(protocol);
+//     else
+//         // launch the protocol on the thread pool.
+//         cp::sync_wait(std::move(protocol) | macoro::start_on(threadPool));
+
+//     // choices, messages has been populated with random OT messages.
+//     // messages[i] = sender.message[i][choices[i]]
+//     // See the header for other options.
+    
+//     auto end = timer.setTimePoint("end");
+//     auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+//     u64 com = chl.bytesReceived() + chl.bytesSent();
+
+//     if (verbose)
+//     {
+//         std::string typeStr = "be ";
+//         lout << tag <<
+//         " n:" << Color::Green << std::setw(6) << std::setfill(' ') << numOTs << Color::Default <<
+//         " type: " << Color::Green << typeStr << Color::Default <<
+//         "   ||   " << Color::Green <<
+//         std::setw(6) << std::setfill(' ') << milli << " ms   " <<
+//         std::setw(6) << std::setfill(' ') << com << " bytes" << std::endl << Color::Default;
+
+//         lout << gTimer << std::endl;
+//         lout << " **** receiver ****\n" << timer << std::endl;
+//     }
+// }
+
+// void silent_cot_send(std::vector<block> &messages, block delta, 
+//     std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
+// {
+//     std::string tag = "silent_cot_send";
+//     u64 numOTs = messages.size();
+
+//     auto malicious = SilentSecType::SemiHonest;
+//     auto multType = MultType::slv5;
+
+//     std::vector<SilentBaseType> types;
+//     types.push_back(SilentBaseType::BaseExtend);
+        
+//     // get up the networking
+//     auto chl = cp::asioConnect(ip, true);
+
+//     macoro::thread_pool threadPool;
+//     auto work = threadPool.make_work();
+//     if (numThreads > 1)
+//         threadPool.create_threads(numThreads);
+
+//     Timer timer;
+//     auto start = timer.setTimePoint("start");
+
+//     SilentOtExtSender sender;
+
+//     // optionally request the LPN encoding matrix.
+//     sender.mMultType = multType;
+
+//     // optionally configure the sender. default is semi honest security.
+//     sender.configure(numOTs, 2, numThreads, malicious);
+
+//     // optional. You can request that the base ot are generated either
+//     // using just base OTs (few rounds, more computation) or 128 base OTs and then extend those. 
+//     // The default is the latter, base + extension.
+//     // type == SilentBaseType::BaseExtend
+//     cp::sync_wait(sender.genSilentBaseOts(prng, chl, true));
+
+//     // std::vector<std::array<block, 2>> messages(numOTs);
+
+//     // create the protocol object.
+//     auto protocol = sender.silentSend(delta, messages, prng, chl);
+
+//     // run the protocol
+//     if (numThreads <= 1)
+//         cp::sync_wait(protocol);
+//     else
+//         // launch the protocol on the thread pool.
+//         cp::sync_wait(std::move(protocol) | macoro::start_on(threadPool));
+
+//     // messages has been populated with random OT messages.
+//     // See the header for other options.
+
+//     auto end = timer.setTimePoint("end");
+//     auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+//     u64 com = chl.bytesReceived() + chl.bytesSent();
+
+//     if (verbose)
+//     {
+//         std::string typeStr = "be ";
+//         lout << tag <<
+//         " n:" << Color::Green << std::setw(6) << std::setfill(' ') << numOTs << Color::Default <<
+//         " type: " << Color::Green << typeStr << Color::Default <<
+//         "   ||   " << Color::Green <<
+//         std::setw(6) << std::setfill(' ') << milli << " ms   " <<
+//         std::setw(6) << std::setfill(' ') << com << " bytes" << std::endl << Color::Default;
+
+//         lout << gTimer << std::endl;
+//         lout << " **** sender ****\n" << timer << std::endl;
+//     }
+// }
+
+void silent_ot_test(CLP& cmd)
 {
+    auto sockets = cp::LocalAsyncSocket::makePair();
+
     auto numOTs = cmd.isSet("nn")
         ? (1 << cmd.get<int>("nn"))
         : cmd.getOr("n", 0);
+    
+    if (numOTs == 0) numOTs = 1 << 20;
+
     auto numThreads = cmd.getOr("t", 4);
-    auto ip = cmd.getOr<std::string>("ip", "localhost:1212");
     bool verbose = (cmd.getOr("v", 1) >= 1);
+    u64 scaler = cmd.getOr("s", 2);
 
-    if (numOTs == 0)
-    numOTs = 1 << 20;
-
-    PRNG prng(sysRandomSeed());
-
-    std::vector<std::array<block, 2>> messages_s(numOTs);
-    std::vector<block> messages_r(numOTs);
-    BitVector choices(numOTs);
-    choices.randomize(prng);
-    choices[0] = 1;
-
-    BitVector choices_old = choices;
-
-    auto thrd = std::thread([&] {
-        try { silent_rot_send(messages_s, ip, prng, numThreads, verbose); }
-        catch (std::exception& e)
-        {
-            lout << e.what() << std::endl;
-        }
-        });
-
-    try { silent_rot_recv(messages_r, choices, ip, prng, numThreads, verbose); }
-    catch (std::exception& e)
-    {
-        lout << e.what() << std::endl;
-    }
-    thrd.join();
-
-    std::cout << "After ROT:"<< std::endl;
-    std::cout << "+ messages_s[0][0] -> "     <<  messages_s[0][0] << std::endl;
-    std::cout << "+ messages_s[0][1] -> "     <<  messages_s[0][1] << std::endl;
-    std::cout << "+ choices[0]       -> "     <<  choices[0]       << std::endl;
-    std::cout << "+ messages_r[0]    -> "     <<  messages_r[0]    << std::endl;
-
-    std::cout << "+ choices_old == choices? " << std ::endl;
-    std::cout << "-+ " << std::boolalpha << (choices_old==choices) << std ::endl;
-    std::cout << "-+ choices_old[:4] : "      << choices_old[0]    << choices_old[1] 
-              << choices_old[2]               << choices_old[3]    << std ::endl;
-    std::cout << "-+ choices[:4]     : "      << choices[0]        << choices[1]
-              << choices[2]                   << choices[3]        << std ::endl;
-    std::cout << std ::endl;
-    
-    checkRandom(messages_r, messages_s, choices, numOTs, verbose);
-}
-
-void silent_cot_recv(std::vector<block> &messages, BitVector &choices, 
-    std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
-{
-    std::string tag = "silent_cot_recv";
-    u64 numOTs = messages.size();
-
-    auto malicious = SilentSecType::SemiHonest;
-    auto multType  = MultType::slv5;
-        
-    // get up the networking
-    auto chl = cp::asioConnect(ip, false);
-
-    macoro::thread_pool threadPool;
-    auto work = threadPool.make_work();
-    if (numThreads > 1)
-        threadPool.create_threads(numThreads);
-
-    Timer timer;
-    auto start = timer.setTimePoint("start");
-
-    SilentOtExtReceiver recver;
-
-    // optionally request the LPN encoding matrix.
-    recver.mMultType = multType;
-
-    // configure the sender. optional for semi honest security...
-    recver.configure(numOTs, 2, numThreads, malicious);
-
-    // optional. You can request that the base ot are generated either
-    // using just base OTs (few rounds, more computation) or 128 base OTs and then extend those. 
-    // The default is the latter, base + extension.
-    // type == SilentBaseType::BaseExtend
-    cp::sync_wait(recver.genSilentBaseOts(prng, chl, true));
-
-    // std::vector<block> messages(numOTs);
-    // BitVector choices(numOTs);
-
-    // create the protocol object.
-    auto protocol = recver.silentReceive(choices, messages, prng, chl, OTType::Correlated);
-
-    // run the protocol
-    if (numThreads <= 1)
-        cp::sync_wait(protocol);
-    else
-        // launch the protocol on the thread pool.
-        cp::sync_wait(std::move(protocol) | macoro::start_on(threadPool));
-
-    // choices, messages has been populated with random OT messages.
-    // messages[i] = sender.message[i][choices[i]]
-    // See the header for other options.
-    
-    auto end = timer.setTimePoint("end");
-    auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    u64 com = chl.bytesReceived() + chl.bytesSent();
-
-    if (verbose)
-    {
-        std::string typeStr = "be ";
-        lout << tag <<
-        " n:" << Color::Green << std::setw(6) << std::setfill(' ') << numOTs << Color::Default <<
-        " type: " << Color::Green << typeStr << Color::Default <<
-        "   ||   " << Color::Green <<
-        std::setw(6) << std::setfill(' ') << milli << " ms   " <<
-        std::setw(6) << std::setfill(' ') << com << " bytes" << std::endl << Color::Default;
-
-        lout << gTimer << std::endl;
-        lout << " **** receiver ****\n" << timer << std::endl;
-    }
-}
-
-void silent_cot_send(std::vector<block> &messages, block delta, 
-    std::string ip, PRNG &prng, u64 numThreads, bool verbose = false)
-{
-    std::string tag = "silent_cot_send";
-    u64 numOTs = messages.size();
-
-    auto malicious = SilentSecType::SemiHonest;
-    auto multType = MultType::slv5;
-
-    std::vector<SilentBaseType> types;
-    types.push_back(SilentBaseType::BaseExtend);
-        
-    // get up the networking
-    auto chl = cp::asioConnect(ip, true);
-
-    macoro::thread_pool threadPool;
-    auto work = threadPool.make_work();
-    if (numThreads > 1)
-        threadPool.create_threads(numThreads);
-
-    Timer timer;
-    auto start = timer.setTimePoint("start");
+    PRNG prng(toBlock(cmd.getOr("seed", 0)));
+    PRNG prng1(toBlock(cmd.getOr("seed1", 1)));
 
     SilentOtExtSender sender;
+    SilentOtExtReceiver recver;
 
-    // optionally request the LPN encoding matrix.
-    sender.mMultType = multType;
-
-    // optionally configure the sender. default is semi honest security.
-    sender.configure(numOTs, 2, numThreads, malicious);
-
-    // optional. You can request that the base ot are generated either
-    // using just base OTs (few rounds, more computation) or 128 base OTs and then extend those. 
-    // The default is the latter, base + extension.
-    // type == SilentBaseType::BaseExtend
-    cp::sync_wait(sender.genSilentBaseOts(prng, chl, true));
-
-    // std::vector<std::array<block, 2>> messages(numOTs);
-
-    // create the protocol object.
-    auto protocol = sender.silentSend(delta, messages, prng, chl);
-
-    // run the protocol
-    if (numThreads <= 1)
-        cp::sync_wait(protocol);
-    else
-        // launch the protocol on the thread pool.
-        cp::sync_wait(std::move(protocol) | macoro::start_on(threadPool));
-
-    // messages has been populated with random OT messages.
-    // See the header for other options.
-
-    auto end = timer.setTimePoint("end");
-    auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    u64 com = chl.bytesReceived() + chl.bytesSent();
-
-    if (verbose)
-    {
-        std::string typeStr = "be ";
-        lout << tag <<
-        " n:" << Color::Green << std::setw(6) << std::setfill(' ') << numOTs << Color::Default <<
-        " type: " << Color::Green << typeStr << Color::Default <<
-        "   ||   " << Color::Green <<
-        std::setw(6) << std::setfill(' ') << milli << " ms   " <<
-        std::setw(6) << std::setfill(' ') << com << " bytes" << std::endl << Color::Default;
-
-        lout << gTimer << std::endl;
-        lout << " **** sender ****\n" << timer << std::endl;
-    }
-}
-
-void silent_cot_test(CLP& cmd)
-{
-    auto numOTs = cmd.isSet("nn")
-        ? (1 << cmd.get<int>("nn"))
-        : cmd.getOr("n", 0);
-    auto numThreads = cmd.getOr("t", 4);
-    auto ip = cmd.getOr<std::string>("ip", "localhost:1212");
-    bool verbose = (cmd.getOr("v", 1) >= 1);
-
-    if (numOTs == 0)
-    numOTs = 1 << 20;
-
-    PRNG prng(sysRandomSeed());
+    sender.mMultType = MultType::Tungsten;
+    recver.mMultType = MultType::Tungsten;
 
     block delta = prng.get();
-
-    auto ot_type = OTType::Correlated;
-
-    std::vector<block> messages_s(numOTs);
     
-    std::vector<block> messages_r(numOTs);
-    BitVector choices(numOTs);
-    choices.randomize(prng);
-    choices[0] = 1;
+    // The sender supplies 2 messages for every OT.
+    std::vector<std::array<block, 2>> msg_s(numOTs);
 
-    BitVector choices_old = choices;
+    // The receiver gets 1 message for every OT.
+    std::vector<block> msg_r(numOTs);
+    BitVector choice(numOTs);
 
-    auto thrd = std::thread([&] {
-        try { silent_cot_send(messages_s, delta, ip, prng, numThreads, verbose); }
-        catch (std::exception& e)
-        {
-            lout << e.what() << std::endl;
-        }
-        });
+    fakeBase(numOTs, scaler, numThreads, prng, recver, sender);
 
-    try { silent_cot_recv(messages_r, choices, ip, prng, numThreads, verbose); }
-    catch (std::exception& e)
+    Timer timer;
+    auto start = timer.setTimePoint("start");
+    
+    auto p0 = sender.silentSend(msg_s, prng, sockets[0]);
+    auto p1 = recver.silentReceive(choice, msg_r, prng, sockets[1]);
+
+    eval(p0, p1);
+    
+    auto end = timer.setTimePoint("end");
+    auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    checkRandom(msg_r, msg_s, choice, numOTs, true);
+
+    u64 com = sockets[0].bytesReceived() + sockets[0].bytesSent();
+
+    if (verbose)
     {
-        lout << e.what() << std::endl;
+        lout << "silent_ot_test" <<
+        " n:" << Color::Green << std::setw(6) << std::setfill(' ') << numOTs << Color::Default <<
+        "   ||   " << Color::Green <<
+        std::setw(6) << std::setfill(' ') << milli << " ms   " <<
+        std::setw(6) << std::setfill(' ') << com << " bytes" << std::endl << Color::Default;
+
+        lout << gTimer << std::endl;
     }
-    thrd.join();
 
-    std::cout << "After COT:"<< std::endl;
-    std::cout << "+ messages_s[0]       -> "  <<  messages_s[0]    << std::endl;
-    std::cout << "+ messages_s[0]^delta -> "  <<  (messages_s[0] ^  delta)  << std::endl;
-    std::cout << "+ choices[0]          -> "  <<  choices[0]       << std::endl;
-    std::cout << "+ messages_r[0]       -> "  <<  messages_r[0]    << std::endl;
+//     std::cout << "After COT:"<< std::endl;
+//     std::cout << "+ messages_s[0]       -> "  <<  messages_s[0]    << std::endl;
+//     std::cout << "+ messages_s[0]^delta -> "  <<  (messages_s[0] ^  delta)  << std::endl;
+//     std::cout << "+ choices[0]          -> "  <<  choices[0]       << std::endl;
+//     std::cout << "+ messages_r[0]       -> "  <<  messages_r[0]    << std::endl;
 
-    std::cout << "+ choices_old == choices? " << std ::endl;
-    std::cout << "-+ " << std::boolalpha << (choices_old==choices) << std ::endl;
-    std::cout << "-+ choices_old[:4] : "      << choices_old[0]    << choices_old[1] 
-              << choices_old[2]               << choices_old[3]    << std ::endl;
-    std::cout << "-+ choices[:4]     : "      << choices[0]        << choices[1]
-              << choices[2]                   << choices[3]        << std ::endl;
-    std::cout << std ::endl;
+//     std::cout << "+ choices_old == choices? " << std ::endl;
+//     std::cout << "-+ " << std::boolalpha << (choices_old==choices) << std ::endl;
+//     std::cout << "-+ choices_old[:4] : "      << choices_old[0]    << choices_old[1] 
+//               << choices_old[2]               << choices_old[3]    << std ::endl;
+//     std::cout << "-+ choices[:4]     : "      << choices[0]        << choices[1]
+//               << choices[2]                   << choices[3]        << std ::endl;
+//     std::cout << std ::endl;
     
-    checkCorrelated(messages_r, messages_s, choices, delta, numOTs, verbose, ChoiceBitPacking::False);
+//     checkCorrelated(messages_r, messages_s, choices, delta, numOTs, verbose, ChoiceBitPacking::False);
 }

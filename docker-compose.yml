@@ -3,7 +3,7 @@ services:
     party1:
         image: silentot:test
         container_name: silentot-test
-        command: ./build/main -v 2 -nn 17 -silver
+        command: ./build/main -v 1 -nn 17
 
 # version: '1'
 # services:

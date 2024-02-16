@@ -12,18 +12,9 @@ WORKDIR /SilentOT/libOTe/
 
 COPY libOTe ./
 
-RUN mkdir -p out/build/linux \
-    && \
-    cmake -S . -B out/build/linux \
-        -DENABLE_ASAN=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DFETCH_AUTO=ON \
-        -DENABLE_BOOST=ON -DCOPROTO_ENABLE_BOOST=ON -DENABLE_RELIC=ON \
-        -DENABLE_ALL_OT=ON -DENABLE_BITPOLYMUL=ON -DNO_SILVER_WARNING=ON
+RUN python3 build.py --all --boost --sodium
 
-RUN cmake --build out/build/linux 
-
-RUN su \
-    && \
-    cmake --install out/build/linux
+RUN python3 build.py --install
 
 # Copy and build silentOT_docker ----------------------------------------------
 
