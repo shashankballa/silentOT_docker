@@ -1,5 +1,6 @@
 
 #include <silentOTutils.h>
+#include <ExConv_tests.h>
 
 using namespace osuCrypto;
 using namespace std;
