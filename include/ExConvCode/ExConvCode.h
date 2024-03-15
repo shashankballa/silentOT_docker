@@ -8,7 +8,7 @@
 
 #include "cryptoTools/Common/Defines.h"
 #include "cryptoTools/Common/Timer.h"
-#include "libOTe/Tools/ExConvCode/Expander.h"
+#include "ExConvCode/Expander.h"
 #include "libOTe/Tools/EACode/Util.h"
 
 namespace osuCrypto

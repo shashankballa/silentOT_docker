@@ -1,5 +1,5 @@
 #include "ExConvChecker.h"
-#include "libOTe/Tools/ExConvCode/ExConvCode.h"
+#include "ExConvCode/ExConvCode.h"
 #include <iomanip>
 #include "libOTe/Tools/CoeffCtx.h"
 

@@ -422,20 +422,69 @@ namespace osuCrypto
 
 
     void ExConvCode_encode_basic_test(const oc::CLP& cmd)
-    {
+    {   
+
+        // k: message size k
         auto K = cmd.getManyOr<u64>("k", { 32ul, 333 });
-        auto R = cmd.getManyOr<double>("R", { 2.0, 3.0 });
+        
+        // r: code rate for the code size n = k * r   
+        auto R = cmd.getManyOr<double>("R", { 2.0, 3.0 });   
+
+        // bw: expander size, I think this is the number of bits in the expander matrix
         auto Bw = cmd.getManyOr<u64>("bw", { 7, 21 });
         auto Aw = cmd.getManyOr<u64>("aw", { 16, 24, 29 });
 
-        //bool v = cmd.isSet("v");
+        // v: verbose mode
+        bool v = cmd.isSet("v");
+
+        // Print the test name
+        if (v)
+        {
+            std::cout << "ExConvCode_encode_basic_test" << std::endl;
+        }
+
         for (auto k : K) for (auto r : R) for (auto bw : Bw) for (auto aw : Aw) for (auto sys : { false, true })
         {
+
             auto n = k * r;
+
+            // Print the parameters
+            if (v)
+            {
+                std::cout << "> k: " << k << " | n: " << n << " | bw: " << bw << " | aw: " << aw << " | sys: " << sys << std::endl;
+            }
+
+            // F = u32, CoeffCtx = CoeffCtxInteger
             exConvTest<u32, CoeffCtxInteger>(k, n, bw, aw, sys);
+            // print F and CoeffCtx
+            if (v)
+            {
+                std::cout << ">> F: u32 | CoeffCtx: CoeffCtxInteger" << std::endl;
+            }
+            
+            // F = u8, CoeffCtx = CoeffCtxInteger
             exConvTest<u8, CoeffCtxInteger>(k, n, bw, aw, sys);
+            // print F and CoeffCtx
+            if (v)
+            {
+                std::cout << ">> F: u8 | CoeffCtx: CoeffCtxInteger" << std::endl;
+            }
+
+            // F = block, CoeffCtx = CoeffCtxGF128
             exConvTest<block, CoeffCtxGF128>(k, n, bw, aw, sys);
+            // print F and CoeffCtx
+            if (v)
+            {
+                std::cout << ">> F: block | CoeffCtx: CoeffCtxGF128" << std::endl;
+            }
+
+            // F = std::array<u8, 4>, CoeffCtx = CoeffCtxArray<u8, 4>
             exConvTest<std::array<u8, 4>, CoeffCtxArray<u8, 4>>(k, n, bw, aw, sys);
+            // print F and CoeffCtx
+            if (v)
+            {
+                std::cout << ">> F: std::array<u8, 4> | CoeffCtx: CoeffCtxArray<u8, 4>" << std::endl;
+            }
         }
 
     }
