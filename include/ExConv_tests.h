@@ -8,6 +8,10 @@ namespace osuCrypto
 
     void ExConvCode_encode_basic_test(const oc::CLP& cmd);
 
+    void ExConvCode_encode_basic_bitwise_test(const oc::CLP& cmd);
+
+    void ExConvCode_encode_basic_bitwise_seq_test(const oc::CLP& cmd);
+
     void ExConvCode_weight_test(const oc::CLP& cmd);
 
 }

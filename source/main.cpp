@@ -9,6 +9,6 @@ int main(int argc, char** argv){
     CLP cmd;
 	cmd.parse(argc, argv);
     // silent_ot_test(cmd);
-    ExConvCode_encode_basic_test(cmd);
+    ExConvCode_encode_basic_bitwise_seq_test(cmd);
     return 0;
 }
