@@ -41,7 +41,7 @@ docker exec -it silentot-test bash
 gdb --args ./build/main -v 1 -nn 25
 ```
 
-8. Use GDB to Debug: Once GDB starts, you can run your program within GDB by typing run. If your program crashes, GDB will show you where the crash happened, and you can use various GDB commands to inspect the state of your program at the time of the crash. Exit gdb and the container's shell after debugging.
+8. Use GDB to Debug: Once GDB starts, you can run your program within GDB by typing `run`. GDB will show you where the crash happened, and you can use various GDB commands to inspect the state of your program at the time of the crash. Exit gdb and the container's shell after debugging.
 
 #### Shut down the Container
 
