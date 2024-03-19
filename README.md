@@ -1,6 +1,6 @@
 # SilentOT from libOTe with docker
 
-### Build Instructions 
+## Build Instructions 
 
 1. Clone the git repository by running:
 ```
@@ -29,7 +29,7 @@ docker compose up
 
 ### Currently we are debugging so do the following
 
-## Run project with GDB
+#### Run project with GDB
 
 6. In a new terminal, Attach to the container's shell:
 ```
@@ -41,7 +41,7 @@ docker exec -it silentot-test bash
 gdb --args ./build/main -v 1 -nn 25
 ```
 
-## Exit the Container
+#### Exit the Container
 
 8. Run:
 ```
