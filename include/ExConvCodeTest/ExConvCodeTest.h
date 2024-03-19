@@ -8,12 +8,12 @@
 
 #include "cryptoTools/Common/Defines.h"
 #include "cryptoTools/Common/Timer.h"
-#include "ExConvCode/Expander.h"
+#include "ExConvCodeTest/ExpanderTest.h"
 #include "libOTe/Tools/EACode/Util.h"
 
 namespace osuCrypto
 {
-
+    /* Not used
     template<typename T, typename = void>
     struct has_operator_star : std::false_type
     {};
@@ -40,6 +40,7 @@ namespace osuCrypto
         >
         >>
         : std::true_type{};
+    */
 
     // The encoder for the generator matrix G = B * A. dualEncode(...) is the main function
     // config(...) should be called first.
@@ -57,10 +58,10 @@ namespace osuCrypto
     // dualEncode can be called on.
     //
     // https://eprint.iacr.org/2023/882
-    class ExConvCode : public TimerAdapter
+    class ExConvCodeTest : public TimerAdapter
     {
     public:
-        ExpanderCode mExpander;
+        ExpanderCodeTest mExpander;
 
         // configure the code. The default parameters are choses to balance security and performance.
         // For additional parameter choices see the paper.
@@ -244,7 +245,7 @@ namespace osuCrypto
     };
 
 
-    inline void ExConvCode::config(
+    inline void ExConvCodeTest::config(
         u64 messageSize,
         u64 codeSize,
         u64 expanderWeight,
@@ -266,11 +267,11 @@ namespace osuCrypto
 
     // Compute e[0,...,k-1] = G * e.
     template<typename F, typename CoeffCtx, typename Iter>
-    void ExConvCode::dualEncode(
+    void ExConvCodeTest::dualEncode(
         Iter&& e_,
         CoeffCtx ctx)
     {
-        static_assert(is_iterator<Iter>::value, "must pass in an iterator to the data");
+        // static_assert(is_iterator<Iter>::value, "must pass in an iterator to the data");
 
         if(mCodeSize == 0)
             throw RTE_LOC;
@@ -321,7 +322,7 @@ namespace osuCrypto
         bool rangeCheck,
         typename Iter
     >
-    OC_FORCEINLINE void ExConvCode::accOne8(
+    OC_FORCEINLINE void ExConvCodeTest::accOne8(
         Iter X,
         u64 i,
         u64 j,
@@ -469,7 +470,7 @@ namespace osuCrypto
         bool rangeCheck,
         typename Iter
     >
-    OC_FORCEINLINE void ExConvCode::accOneGen(
+    OC_FORCEINLINE void ExConvCodeTest::accOneGen(
         Iter X,
         u64 i,
         u64 size,
@@ -532,7 +533,7 @@ namespace osuCrypto
         int AccumulatorSize,
         typename Iter
     >
-    OC_FORCEINLINE void ExConvCode::accOne(
+    OC_FORCEINLINE void ExConvCodeTest::accOne(
         Iter X,
         u64 i,
         u64 size,
@@ -573,7 +574,7 @@ namespace osuCrypto
         u64 AccumulatorSize,
         typename Iter
     >
-    void ExConvCode::accumulateFixed(
+    void ExConvCodeTest::accumulateFixed(
         Iter X,
         u64 size,
         CoeffCtx& ctx,

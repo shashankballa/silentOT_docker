@@ -12,6 +12,8 @@
 #include "libOTe/Tools/QuasiCyclicCode.h"
 #include "libOTe/Tools/TungstenCode/TungstenCode.h"
 
+#include "ExConvCodeTest/ExConvCodeTest.h"
+
 #include <iomanip>
 
 #include <Millionaire/millionaire.h>
@@ -82,21 +84,21 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
                     cout << "compressTest: MinDist           : " << _2 << endl;
                 }
 
-                ExConvCode exConvEncoder;
+                ExConvCodeTest exConvEncoder;
                 exConvEncoder.config(mRequestNumOts, mNoiseVecSize, expanderWeight, accWeight);
 
                 if (verbose){
-                    cout << "compressTest: ExConvCode Message Size    : ";
+                    cout << "compressTest: ExConvCodeTest Message Size    : ";
                     cout << exConvEncoder.mMessageSize << endl;
-                    cout << "compressTest: ExConvCode Code Size       : ";
+                    cout << "compressTest: ExConvCodeTest Code Size       : ";
                     cout << exConvEncoder.mCodeSize << endl;
-                    cout << "compressTest: ExConvCode Accumulator Size: ";
+                    cout << "compressTest: ExConvCodeTest Accumulator Size: ";
                     cout << exConvEncoder.mAccumulatorSize << endl;
-                    cout << "compressTest: ExConvCode Systematic      : ";
+                    cout << "compressTest: ExConvCodeTest Systematic      : ";
                     cout << boolalpha << exConvEncoder.mSystematic << endl;
                 }
 
-                if (verbose) cout << "compressTest: ExConvCode.dualEncode" << endl;
+                if (verbose) cout << "compressTest: ExConvCodeTest.dualEncode" << endl;
                 exConvEncoder.dualEncode<block, CoeffCtxGF2>(mB.begin(), {});
                 break;
             }

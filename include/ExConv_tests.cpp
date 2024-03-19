@@ -1,8 +1,8 @@
 #include "ExConv_tests.h"
-#include "ExConvCode/ExConvCode.h"
+#include "ExConvCodeTest/ExConvCodeTest.h"
 #include <iomanip>
 #include "libOTe/Tools/CoeffCtx.h"
-#include "ExConvCode/ExConvChecker.h"
+#include "ExConvCodeTest/ExConvCheckerTest.h"
 
 namespace osuCrypto
 {
@@ -86,7 +86,7 @@ namespace osuCrypto
 
 
         // The ExConv code instance
-        ExConvCode code;
+        ExConvCodeTest code;
         code.config(k, n, bw, aw, sys);
         
         // Offset for systematic coding
@@ -205,7 +205,7 @@ namespace osuCrypto
         std::vector<F> x1_acc = x1;
 //=====================================================================================================
 // Component 2: Testing Accumulate-Fixed and Refill-Coefficients
-        // Here, we test the accumulateFixed method of the ExConvCode class on x1 and x2.
+        // Here, we test the accumulateFixed method of the ExConvCodeTest class on x1 and x2.
         // x1 is accumulated using an accumulator size of 0, 
         // while x2 is accumulated using an accumulator size of 24.
         u64 size = n - accOffset;
@@ -226,7 +226,7 @@ namespace osuCrypto
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // x3 Code Block
         // Here, we perform the expansion process using explicit bitwise operations on x3 and compare the 
-        // result to x1 which was expanded using accumulateFixed from ExConvCode class.
+        // result to x1 which was expanded using accumulateFixed from ExConvCodeTest class.
         for (auto r = 0; r < 1 + code.mAccTwice; ++r)
         {
             PRNG coeffGen(r ? ~code.mSeed : code.mSeed);
@@ -242,7 +242,7 @@ namespace osuCrypto
                 if (mtxCoeffIter > mtxCoeffEnd)
                 {
                     // generate more mtx coefficients
-                    ExConvCode::refill(coeffGen);
+                    ExConvCodeTest::refill(coeffGen);
                     mtxCoeffIter = (u8*)coeffGen.mBuffer.data();
                 }
 
@@ -303,7 +303,7 @@ namespace osuCrypto
 //====================================================================================================
 // Component 3: Expand
         // Here, we test the expansion process, performed on x1, with two different methods:
-        //   y1 using expand function from ExpanderCode
+        //   y1 using expand function from ExpanderCodeTest
         //   y2 using explicit bitwise operations
         // The results are compared to ensure they are equal.
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -417,7 +417,7 @@ namespace osuCrypto
             std::cout << std::endl;
         }
         // The ExConv code instance
-        ExConvCode code;
+        ExConvCodeTest code;
         code.config(k, n, bw, aw, sys);
         
         // Offset for systematic coding
@@ -453,14 +453,14 @@ Component 1: Testing Accumulation
         The accumulation results are compared to ensure they are equal.
 =========================================================================================================
 Component 2: Testing Accumulate-Fixed and Refill-Coefficients
-        Here, we test the accumulateFixed method of the ExConvCode class on x_acc and compare with
+        Here, we test the accumulateFixed method of the ExConvCodeTest class on x_acc and compare with
         the result of performing explicit bitwise operations on x_acc_b.
         x_accF is accumulated using an accumulator size of 0, 
         while x_accF_b is accumulated using explicit bitwise operations.
 ========================================================================================================
 Component 3: Expand
         Here, we test the expansion process, performed on x_accF, with two different methods:
-          x_exp using expand function from ExpanderCode
+          x_exp using expand function from ExpanderCodeTest
           x_exp_b using explicit bitwise operations
         The results are compared to ensure they are equal.
 ========================================================================================================
@@ -473,7 +473,7 @@ Component 4: Dual Encoding
 ========================================================================================================
 */
 //======================================================================================================
-// Computing with ExConvCode functions
+// Computing with ExConvCodeTest functions
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // x_acc Code Block
         std::vector<F> x_acc = x_init;
@@ -566,7 +566,7 @@ Component 4: Dual Encoding
 // x_accF_b Code Block
         std::vector<F> x_accF_b = x_acc_b;
         // Here, we perform the expansion process using explicit bitwise operations on x_acc_b and 
-        // compare the result to x1 which was expanded using accumulateFixed from ExConvCode class.
+        // compare the result to x1 which was expanded using accumulateFixed from ExConvCodeTest class.
         for (auto r = 0; r < 1 + code.mAccTwice; ++r)
         {
             PRNG coeffGen(r ? ~code.mSeed : code.mSeed);
@@ -582,7 +582,7 @@ Component 4: Dual Encoding
                 if (mtxCoeffIter > mtxCoeffEnd)
                 {
                     // generate more mtx coefficients
-                    ExConvCode::refill(coeffGen);
+                    ExConvCodeTest::refill(coeffGen);
                     mtxCoeffIter = (u8*)coeffGen.mBuffer.data();
                 }
 
@@ -657,7 +657,7 @@ Component 4: Dual Encoding
             }
         }
 //======================================================================================================
-// Verifying the results from bitwise operations with the results from ExConvCode functions
+// Verifying the results from bitwise operations with the results from ExConvCodeTest functions
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Verfication Code Block
         for (u64 i = 0; i < n; ++i)
@@ -807,7 +807,7 @@ Component 4: Dual Encoding
         }
     }
 
-    Matrix<u8> getAccumulator(ExConvCode& encoder)
+    Matrix<u8> getAccumulator(ExConvCodeTest& encoder)
     {
         auto k = encoder.mMessageSize;;
         auto n = encoder.mCodeSize;;
@@ -832,7 +832,7 @@ Component 4: Dual Encoding
     }
 
 
-    u64 getGeneratorWeight_(ExConvCode& encoder, bool verbose)
+    u64 getGeneratorWeight_(ExConvCodeTest& encoder, bool verbose)
     {
         auto k = encoder.mMessageSize;
         auto n = encoder.mCodeSize;
@@ -933,7 +933,7 @@ Component 4: Dual Encoding
             for (u64 bw = 3; bw < 11; bw += 2)
             {
 
-                ExConvCode encoder;
+                ExConvCodeTest encoder;
                 encoder.config(k, n, bw, aw);
                 encoder.mAccTwice = accTwice;
 

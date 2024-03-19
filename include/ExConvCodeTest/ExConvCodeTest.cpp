@@ -1,4 +1,4 @@
-#include "ExConvCode.h"
+#include "ExConvCodeTest.h"
 
 namespace osuCrypto
 {
@@ -9,7 +9,7 @@ namespace osuCrypto
 
 
     //// get the expander matrix
-    //SparseMtx ExConvCode::getB() const
+    //SparseMtx ExConvCodeTest::getB() const
     //{
     //    throw RTE_LOC;
     //    //if (mSystematic)
@@ -34,7 +34,7 @@ namespace osuCrypto
 
 
     // Get the parity check version of the accumulator
-    //SparseMtx  ExConvCode::getAPar() const
+    //SparseMtx  ExConvCodeTest::getAPar() const
     //{
     //    throw RTE_LOC;
     //    //PRNG prng(mSeed ^ OneBlock);
@@ -57,7 +57,7 @@ namespace osuCrypto
     //}
 
     //// get the accumulator matrix
-    //SparseMtx  ExConvCode::getA() const
+    //SparseMtx  ExConvCodeTest::getA() const
     //{
     //    auto APar = getAPar();
 

@@ -1,5 +1,5 @@
-#include "ExConvChecker.h"
-#include "ExConvCode/ExConvCode.h"
+#include "ExConvCheckerTest.h"
+#include "ExConvCodeTest/ExConvCodeTest.h"
 #include <iomanip>
 #include "libOTe/Tools/CoeffCtx.h"
 
@@ -7,7 +7,7 @@ namespace osuCrypto
 {
 
 
-    Matrix<u8> getAccumulator_(ExConvCode& encoder)
+    Matrix<u8> getAccumulator_(ExConvCodeTest& encoder)
     {
         auto k = encoder.mMessageSize;;
         auto n = encoder.mCodeSize;;
@@ -32,7 +32,7 @@ namespace osuCrypto
     }
 
 
-    u64 getAccWeight(ExConvCode& encoder, u64 trials)
+    u64 getAccWeight(ExConvCodeTest& encoder, u64 trials)
     {
         auto n = encoder.mCodeSize;
         //auto g = getGenerator(encoder);
@@ -80,7 +80,7 @@ namespace osuCrypto
     }
 
 
-    //u64 getGeneratorWeight(ExConvCode& encoder)
+    //u64 getGeneratorWeight(ExConvCodeTest& encoder)
     //{
     //    auto k = encoder.mMessageSize;
     //    auto n = encoder.mCodeSize;
@@ -144,7 +144,7 @@ namespace osuCrypto
                     for (u64 j = i; j < trials; j += nt)
                     {
 
-                        ExConvCode encoder;
+                        ExConvCodeTest encoder;
                         encoder.config(k, n, bw, aw, sys, reg, block(21341234, j));
                         encoder.mAccTwice = accTwice;
 
@@ -157,13 +157,13 @@ namespace osuCrypto
                         u64 min = 0;
                         if (x2)
                         {
-                            min = getGeneratorWeightx2<ExConvCode, std::atomic<u64>&>(encoder, verbose, done);
+                            min = getGeneratorWeightx2<ExConvCodeTest, std::atomic<u64>&>(encoder, verbose, done);
                             
                         }
                         else
                         {
-                            //min = getGeneratorWeight<ExConvCode, std::atomic<u64>&>(encoder, verbose, done);
-                            min = getGeneratorWeight2<ExConvCode, std::atomic<u64>&>(encoder, verbose, done);
+                            //min = getGeneratorWeight<ExConvCodeTest, std::atomic<u64>&>(encoder, verbose, done);
+                            min = getGeneratorWeight2<ExConvCodeTest, std::atomic<u64>&>(encoder, verbose, done);
                             //if(min != min2)
                             //    throw RTE_LOC;
                         }
