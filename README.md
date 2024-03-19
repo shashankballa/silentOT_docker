@@ -1,51 +1,89 @@
-# SilentOT from libOTe with docker
 
-## Build Instructions 
+# SilentOT with Docker using libOTe
 
-1. Clone the git repository by running:
-```
-git clone git@github.com:shashankballa/silentOT_docker.git
-```
+This repository contains a Dockerized implementation of the Silent Oblivious Transfer (OT) protocol from the libOTe library, aimed at facilitating development and debugging environments. Follow these instructions to build and run the project within a Docker container.
 
-2. Enter the Framework directory:
-```
-cd silentOT_docker/
-```
+## Quick Start
 
-3. Recursively clone all git submodules:
-```
-git submodule update --init --recursive
-```
+### Prerequisites
 
-4. Build a docker image with tag `silentot:test`:
-```
-docker build -t silentot:test .
-```
+- Docker
+- Docker Compose
+- Git
 
-5. Run docker compose:
-```
-docker compose up
-```
+### Setup and Build
 
-### Currently we are debugging
+1. **Clone the Repository**
 
-#### Run project with GDB
+    Clone this repository to your local machine using SSH:
 
-6. In a new terminal, attach to the container's shell:
-```
-docker exec -it silentot-test bash
-```
+    ```bash
+    git clone git@github.com:shashankballa/silentOT_docker.git
+    ```
 
-7. In the container's shell, run executable under GDB: 
-```
-gdb --args ./build/main -v 1 -nn 25
-```
+2. **Navigate to the Project Directory**
+    
+    Change into the project directory:
+    
+    ```bash
+    cd silentOT_docker/
+    ```
 
-8. Use GDB to Debug: Once GDB starts, you can run your program within GDB by typing `run`. GDB will show you where the crash happened, and you can use various GDB commands to inspect the state of your program at the time of the crash. Exit gdb and the container's shell after debugging.
+3. **Initialize Submodules**
 
-#### Shut down the Container
+    Initialize and update the git submodules:
 
-8. Run:
+    ```bash
+    git submodule update --init --recursive
+    ```
+
+4. **Build Docker Image**
+    
+    Build a docker image with tag `silentot:test`:
+    
+    ```bash
+    docker build -t silentot:test .
+    ```
+
+5. **Launch the Container**
+
+    Use Docker Compose to start the container:
+
+    ```
+    docker compose up
+    ```
+
+### [*Temporary*] Debugging with GDB 
+
+We are currently fixing few issues with our project, follow these steps to use GDB within the Docker container.
+
+1. **Attach to the Container's Shell**
+
+    In a **new terminal**, attach to the container's shell:
+
+    ```
+    docker exec -it silentot-test bash
+    ```
+
+7. **Run with GDB**
+
+    In the **container's shell**, run executable under GDB:
+
+    ```
+    gdb --args ./build/main -v 1 -nn 25
+    ```
+    * To start the debug session, type `run`.
+    * In case of a crash, GDB will indicate where the issue occurred. Utilize GDB commands like `bt` (backtrace) to inspect the state and flow of the program.
+    * To exit GDB and the container's shell after debugging, `exit`.
+
+### Shut down the Container
+
+To stop and remove the Docker container and resources, run:
+
 ```
 docker compose down
 ```
+
+## Support
+
+If you encounter any problems or have suggestions, please open an issue or submit a pull request. For detailed assistance or questions, consider reaching out directly to Shashank Balla at sballa@ucsd.edu.
