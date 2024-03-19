@@ -4,7 +4,8 @@ RUN apt-get update \
     && \
     apt-get install -y \
         vim git make g++ cmake libtool python3 \
-        libboost-all-dev libssl-dev libgmp-dev
+        libboost-all-dev libssl-dev libgmp-dev \
+        gdb
 
 # Copy, build and install libOTe -----------------------------------------------
 

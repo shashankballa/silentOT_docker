@@ -26,3 +26,24 @@ docker build -t silentot:test .
 ```
 docker compose up
 ```
+
+### Currently we are debugging so do the following
+
+## Run project with GDB
+
+6. In a new terminal, Attach to the container's shell:
+```
+docker exec -it silentot-test bash
+```
+
+7. Run executable under GDB: 
+```
+gdb --args ./build/main -v 1 -nn 25
+```
+
+## Exit the Container
+
+8. Run:
+```
+docker compose down
+```

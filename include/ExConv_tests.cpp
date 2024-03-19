@@ -53,7 +53,7 @@ namespace osuCrypto
     //    if (imm8)
     //    {
     //        // mult x[1] * 2
-
+    // 
     //    }
     //    else
     //    {
@@ -62,7 +62,7 @@ namespace osuCrypto
     //        carry = _mm_srli_epi64(carry, 63);  
     //        x = _mm_slli_epi64(x, 1);
     //        return _mm_or_si128(x, carry);
-
+    //
     //        //return _mm_slli_si128(x, 8);
     //    }
     //    //TEMP[i] : = (TEMP1[0] and TEMP2[i])
@@ -727,37 +727,39 @@ namespace osuCrypto
         {
             prng.get(matrixCoeffsVec[i].data(), matrixCoeffsVec[i].size());
         }
-
-//=====================================================================================================
-// Component 1: Testing Accumulation
-        // Here, we test the accumulation process of the ExConv code. 
-        // x_acc and x_acc_b are initialized with the same random values from x_init
-        // The accumulation process is performed differently on each vector:
-        //   x_acc using accOneGen
-        //   x_acc_b using bitwise operations
-        // The accumulation results are compared to ensure they are equal.
-//=====================================================================================================
-// Component 2: Testing Accumulate-Fixed and Refill-Coefficients
-        // Here, we test the accumulateFixed method of the ExConvCode class on x_acc and compare with
-        // the result of performing explicit bitwise operations on x_acc_b.
-        // x_accF is accumulated using an accumulator size of 0, 
-        // while x_accF_b is accumulated using explicit bitwise operations.
-//====================================================================================================
-// Component 3: Expand
-        // Here, we test the expansion process, performed on x_accF, with two different methods:
-        //   x_exp using expand function from ExpanderCode
-        //   x_exp_b using explicit bitwise operations
-        // The results are compared to ensure they are equal.
-//====================================================================================================
-// Component 4: Dual Encoding
-        // Here, we test the dual encoding process which performs accumulateFixed + expand.
-        // We perform the dual encoding on the result of the accumulation process and compare the result to
-        // to x_exp, i.e.:
-        //     x_dual = dualEncode(x_acc) == Expand(AccumulateFixed(x_acc)) = x_exp
-        // where x_acc is the result of the accumulation process on x_init.
-//====================================================================================================
+/*
+=========================================================================================================
+Component 1: Testing Accumulation
+        Here, we test the accumulation process of the ExConv code. 
+        x_acc and x_acc_b are initialized with the same random values from x_init
+        The accumulation process is performed differently on each vector:
+          x_acc using accOneGen
+          x_acc_b using bitwise operations
+        The accumulation results are compared to ensure they are equal.
+=========================================================================================================
+Component 2: Testing Accumulate-Fixed and Refill-Coefficients
+        Here, we test the accumulateFixed method of the ExConvCode class on x_acc and compare with
+        the result of performing explicit bitwise operations on x_acc_b.
+        x_accF is accumulated using an accumulator size of 0, 
+        while x_accF_b is accumulated using explicit bitwise operations.
+========================================================================================================
+Component 3: Expand
+        Here, we test the expansion process, performed on x_accF, with two different methods:
+          x_exp using expand function from ExpanderCode
+          x_exp_b using explicit bitwise operations
+        The results are compared to ensure they are equal.
+========================================================================================================
+Component 4: Dual Encoding
+        Here, we test the dual encoding process which performs accumulateFixed + expand.
+        We perform the dual encoding on the result of the accumulation process and compare the result
+        to x_exp, i.e.:
+            x_dual = dualEncode(x_acc) == Expand(AccumulateFixed(x_acc)) = x_exp
+        where x_acc is the result of the accumulation process on x_init.
+========================================================================================================
+*/
+//======================================================================================================
 // Computing with ExConvCode functions
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // x_acc Code Block
         std::vector<F> x_acc = x_init;
         for (u64 i = 0; i < n; ++i)
@@ -766,13 +768,13 @@ namespace osuCrypto
             code.accOneGen<F, CoeffCtx, true>(x_acc.data(), i, n,  matrixCoeffsVec[i].data(), ctx);
         }
         u64 size = n - accOffset;
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // x_accF Code Block
         std::vector<F> x_accF = x_acc;
         code.accumulateFixed<F, CoeffCtx, 0>(x_accF.data() + accOffset, size, ctx, code.mSeed);
         if (code.mAccTwice)
             code.accumulateFixed<F, CoeffCtx, 0>(x_accF.data() + accOffset, size, ctx, ~code.mSeed);
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // x_exp Code Block
         std::vector<F> x_exp(k), x_exp_b(k);
         if (sys)
@@ -797,45 +799,47 @@ namespace osuCrypto
             step = 0;
             exSize = n;
         }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // x_dual Code Block
         std::vector<F> x_dual = x_acc;
         code.dualEncode<F, CoeffCtx>(x_dual.begin(), {});
         x_dual.resize(k);
-//====================================================================================================
+//======================================================================================================
 // Performing same computation with explicit bitwise operations
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // x_acc_b Code Block
         std::vector<F> x_acc_b = x_init;
         for (u64 i = 0; i < n; ++i)
         {  
             // This code block is used to extract a u64 value from the matrixCoeffs vector.
-            // It ensures that the number of bytes copied is not greater than 8, which is the size of a u64.
+            // It ensures that the number of bytes copied is not greater than 8, the size of u64.
             // The extracted value is stored in the bits variable.
             assert(aw <= 64); // Ensure that the accumulator width (aw) is not greater than 64 bits.
             u64 bits = 0; // Initialize the bits variable to store the extracted value.
             // Copy the bytes from matrixCoeffs to bits, up to a maximum of 8 bytes.
-            // This ensures that only the first 8 bytes of matrixCoeffs are copied, even if it has more bytes.
+            // This ensures that only the first 8 bytes of matrixCoeffs are copied, even if it has 
+            // more bytes.
             memcpy(&bits, matrixCoeffsVec[i].data(), std::min<u64>( matrixCoeffsVec[i].size(), 8));
 
             // Accumulate x_acc_b using bitwise operations
             // This loop runs 'aw' times. In each iteration, it increments 'j'.
-            // The computation basically involves bitwise operations. Here it is written such that it can be
-            // performed with 64-bit integers. This computation can be significantly optimized for a verilog 
-            // (hardware) implementation.
+            // The computation basically involves bitwise operations. Here it is written such that it 
+            // can be performed with 64-bit integers. This computation can be significantly optimized 
+            // for a verilog (hardware) implementation.
             u64 j = i + 1;
             for (u64 a = 0; a < aw; ++a, ++j)
             {
-                // It checks the least significant bit of 'bits'. If it's 1, it performs an operation.
+                // It checks the LSB of 'bits'. If it's 1, it performs an operation.
                 if (bits & 1)
                 {
                     // The operation is to add the 'i'-th element of 'x_acc_b' to the 'j'-th element.
                     // The result is stored back into the 'j'-th element.
                     // 'ctx.plus' is a method that presumably performs this addition operation.
-                    // The '% n' operation is a modulo operation that ensures 'j' is within the bounds of the array.
+                    // The '% n' operation is a modulo operation that ensures 'j' is within the bounds 
+                    // of the array.
                     ctx.plus(x_acc_b[j % n], x_acc_b[j % n], x_acc_b[i]);
                 }
-                // It then shifts 'bits' one bit to the right, effectively discarding the least significant bit.
+                // It then shifts 'bits' one bit to the right, effectively discarding the LSB.
                 bits >>= 1;
             }
             // x_acc_b[j] = x_acc_b[j] + x_acc_b[i]
@@ -843,11 +847,11 @@ namespace osuCrypto
             // x_acc_b[j] = x_acc_b[j] * x_acc_b[j]
             ctx.mulConst(x_acc_b[j % n], x_acc_b[j % n]);
         }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // x_accF_b Code Block
         std::vector<F> x_accF_b = x_acc_b;
-        // Here, we perform the expansion process using explicit bitwise operations on x_acc_b and compare the 
-        // result to x1 which was expanded using accumulateFixed from ExConvCode class.
+        // Here, we perform the expansion process using explicit bitwise operations on x_acc_b and 
+        // compare the result to x1 which was expanded using accumulateFixed from ExConvCode class.
         for (auto r = 0; r < 1 + code.mAccTwice; ++r)
         {
             PRNG coeffGen(r ? ~code.mSeed : code.mSeed);
@@ -895,7 +899,7 @@ namespace osuCrypto
                 ++i;
             }
         }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // x_exp_b Code Block
 
         detail::ExpanderModd regExp(code.mExpander.mSeed^ block(342342134, 23421341), exSize);
@@ -937,9 +941,9 @@ namespace osuCrypto
                 ctx.plus(x_exp_b[i], x_exp_b[i], x_accF[idx + accOffset]);
             }
         }
-//====================================================================================================
+//======================================================================================================
 // Verifying the results from bitwise operations with the results from ExConvCode functions
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Verfication Code Block
         for (u64 i = 0; i < n; ++i)
         {  

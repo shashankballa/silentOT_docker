@@ -10,7 +10,7 @@ add_executable(main source/main.cpp include/ExConv_tests.cpp)
 
 # Set compile options
 target_compile_options(main PUBLIC 
-    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17> -lpthread)
+    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -g> -lpthread)
 
 # Include directories
 target_include_directories(main PUBLIC

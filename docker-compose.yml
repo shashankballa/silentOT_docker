@@ -3,7 +3,8 @@ services:
     party1:
         image: silentot:test
         container_name: silentot-test
-        command: ./build/main -v 1 -nn 25
+        tty: true # Enable TTY for debugging
+        # command: ./build/main -v 1 -nn 25
 
 # version: '1'
 # services:
