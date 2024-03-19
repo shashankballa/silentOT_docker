@@ -29,21 +29,21 @@ docker compose up
 
 ### Currently we are debugging
 
-**Do the following in a NEW TERMINAL!**
-
 #### Run project with GDB
 
-6. Attach to the container's shell:
+6. In a new terminal, attach to the container's shell:
 ```
 docker exec -it silentot-test bash
 ```
 
-7. Run executable under GDB: 
+7. In the container's shell, run executable under GDB: 
 ```
 gdb --args ./build/main -v 1 -nn 25
 ```
 
-#### Exit the Container
+8. Use GDB to Debug: Once GDB starts, you can run your program within GDB by typing run. If your program crashes, GDB will show you where the crash happened, and you can use various GDB commands to inspect the state of your program at the time of the crash. Exit gdb and the container's shell after debugging.
+
+#### Shut down the Container
 
 8. Run:
 ```

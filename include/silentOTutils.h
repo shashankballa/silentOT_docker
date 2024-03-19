@@ -9,6 +9,8 @@
 #include <cryptoTools/Crypto/RandomOracle.h>
 #include <coproto/Socket/AsioSocket.h>
 #include <coproto/Socket/BufferingSocket.h>
+#include "libOTe/Tools/QuasiCyclicCode.h"
+#include "libOTe/Tools/TungstenCode/TungstenCode.h"
 
 #include <iomanip>
 
@@ -26,6 +28,65 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
         // sets the verbose flag
         void Verbose(bool verbose) {
             this->verbose = verbose;
+        }
+            
+        void compressTest()
+        {
+            switch (mMultType)
+            {
+            case osuCrypto::MultType::QuasiCyclic:
+            {
+
+#ifdef ENABLE_BITPOLYMUL
+                QuasiCyclicCode code;
+                code.init2(mRequestNumOts, mNoiseVecSize);
+                code.dualEncode(mB.subspan(0, code.size()));
+#else
+                throw std::runtime_error("ENABLE_BITPOLYMUL");
+#endif
+            }
+                break;
+            case osuCrypto::MultType::ExAcc7:
+            case osuCrypto::MultType::ExAcc11:
+            case osuCrypto::MultType::ExAcc21:
+            case osuCrypto::MultType::ExAcc40:
+            {
+                EACode encoder;
+                u64 expanderWeight = 0, _1;
+                double _2;
+                EAConfigure(mMultType, _1, expanderWeight, _2);
+                encoder.config(mRequestNumOts, mNoiseVecSize, expanderWeight);
+
+                AlignedUnVector<block> B2(encoder.mMessageSize);
+                encoder.dualEncode<block, CoeffCtxGF2>(mB, B2, {});
+                std::swap(mB, B2);
+                break;
+            }
+            case osuCrypto::MultType::ExConv7x24:
+            case osuCrypto::MultType::ExConv21x24:
+            {
+
+                u64 expanderWeight = 0, accWeight = 0, _1;
+                double _2;
+                ExConvConfigure(mMultType, _1, expanderWeight, accWeight, _2);
+
+                ExConvCode exConvEncoder;
+                exConvEncoder.config(mRequestNumOts, mNoiseVecSize, expanderWeight, accWeight);
+
+                exConvEncoder.dualEncode<block, CoeffCtxGF2>(mB.begin(), {});
+                break;
+            }
+            case osuCrypto::MultType::Tungsten:
+            {
+                experimental::TungstenCode encoder;
+                encoder.config(oc::roundUpTo(mRequestNumOts, 8), mNoiseVecSize);
+                encoder.dualEncode<block, CoeffCtxGF2>(mB.begin(), {});
+                break;
+            }
+            default:
+                throw RTE_LOC;
+                break;
+            }
         }
 
         task<> silentSendInplaceTest(
@@ -78,7 +139,7 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
             if (mDebug)
                 MC_AWAIT(checkRT(chl));
 
-            compress();
+            compressTest();
 
             mB.resize(mRequestNumOts);
 
@@ -230,7 +291,7 @@ void silent_ot_test(CLP& cmd)
     Timer timer;
     auto start = timer.setTimePoint("start");
     
-    auto p0 = sender.silentSend(msg_s, prng, sockets[0]);
+    auto p0 = sender.silentSendTest(msg_s, prng, sockets[0]);
     auto p1 = recver.silentReceive(choice, msg_r, prng, sockets[1]);
 
     eval(p0, p1);
