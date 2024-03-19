@@ -17,7 +17,7 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
 
     Clone this repository to your local machine using SSH:
 
-    ```bash
+    ```
     git clone git@github.com:shashankballa/silentOT_docker.git
     ```
 
@@ -25,7 +25,7 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     
     Change into the project directory:
     
-    ```bash
+    ```
     cd silentOT_docker/
     ```
 
@@ -33,7 +33,7 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
 
     Initialize and update the git submodules:
 
-    ```bash
+    ```
     git submodule update --init --recursive
     ```
 
@@ -41,7 +41,7 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     
     Build a docker image with tag `silentot:test`:
     
-    ```bash
+    ```
     docker build -t silentot:test .
     ```
 
@@ -52,6 +52,8 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     ```
     docker compose up
     ```
+    
+    If the command `docker compose` returns a "no such command" error, try using `docker-compose` instead.
 
 ### [*Temporary*] Debugging with GDB 
 
@@ -70,8 +72,9 @@ We are currently fixing few issues with our project, follow these steps to use G
     In the **container's shell**, run executable under GDB:
 
     ```
-    gdb --args ./build/main -v 1 -nn 25
+    gdb --args ./build/main -v 1 -nn 20
     ```
+    
     * To start the debug session, type `run`.
     * In case of a crash, GDB will indicate where the issue occurred. Utilize GDB commands like `bt` (backtrace) to inspect the state and flow of the program.
     * To exit GDB and the container's shell after debugging, `exit`.

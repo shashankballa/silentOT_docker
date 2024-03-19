@@ -26,16 +26,18 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
         bool verbose = false; // verbose
 
         // sets the verbose flag
-        void Verbose(bool verbose) {
+        void setVerbose(bool verbose) {
             this->verbose = verbose;
         }
             
         void compressTest()
         {
+            if (verbose) cout << "compressTest: starting..." << endl;
             switch (mMultType)
             {
             case osuCrypto::MultType::QuasiCyclic:
             {
+                if (verbose) cout << "compressTest: MultType::QuasiCyclic" << endl;
 
 #ifdef ENABLE_BITPOLYMUL
                 QuasiCyclicCode code;
@@ -51,6 +53,8 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
             case osuCrypto::MultType::ExAcc21:
             case osuCrypto::MultType::ExAcc40:
             {
+                if (verbose) cout << "compressTest: MultType::ExAcc" << endl;
+
                 EACode encoder;
                 u64 expanderWeight = 0, _1;
                 double _2;
@@ -65,19 +69,41 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
             case osuCrypto::MultType::ExConv7x24:
             case osuCrypto::MultType::ExConv21x24:
             {
+                if (verbose) cout << "compressTest: MultType::ExConv" << endl;
 
                 u64 expanderWeight = 0, accWeight = 0, _1;
                 double _2;
                 ExConvConfigure(mMultType, _1, expanderWeight, accWeight, _2);
 
+                if (verbose){
+                    cout << "compressTest: Expander Weight   : " << expanderWeight << endl;
+                    cout << "compressTest: Accumulator Weight: " << accWeight << endl;
+                    cout << "compressTest: Scaler            : " << _1 << endl;
+                    cout << "compressTest: MinDist           : " << _2 << endl;
+                }
+
                 ExConvCode exConvEncoder;
                 exConvEncoder.config(mRequestNumOts, mNoiseVecSize, expanderWeight, accWeight);
 
+                if (verbose){
+                    cout << "compressTest: ExConvCode Message Size    : ";
+                    cout << exConvEncoder.mMessageSize << endl;
+                    cout << "compressTest: ExConvCode Code Size       : ";
+                    cout << exConvEncoder.mCodeSize << endl;
+                    cout << "compressTest: ExConvCode Accumulator Size: ";
+                    cout << exConvEncoder.mAccumulatorSize << endl;
+                    cout << "compressTest: ExConvCode Systematic      : ";
+                    cout << boolalpha << exConvEncoder.mSystematic << endl;
+                }
+
+                if (verbose) cout << "compressTest: ExConvCode.dualEncode" << endl;
                 exConvEncoder.dualEncode<block, CoeffCtxGF2>(mB.begin(), {});
                 break;
             }
             case osuCrypto::MultType::Tungsten:
             {
+                if (verbose) cout << "compressTest: MultType::Tungsten" << endl;
+
                 experimental::TungstenCode encoder;
                 encoder.config(oc::roundUpTo(mRequestNumOts, 8), mNoiseVecSize);
                 encoder.dualEncode<block, CoeffCtxGF2>(mB.begin(), {});
@@ -87,6 +113,7 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
                 throw RTE_LOC;
                 break;
             }
+            if (verbose) cout << "compressTest: exiting..." << endl;
         }
 
         task<> silentSendInplaceTest(
@@ -95,6 +122,7 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
             PRNG& prng,
             Socket& chl)
         {
+            if (verbose) cout << "silentSendInplaceTest: MC_BEGIN" << endl;
             MC_BEGIN(task<>,this, d, n, &prng, &chl,
                 i = u64{}, j = u64{},
                 delta = AlignedUnVector<block>{}
@@ -105,6 +133,7 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
 
             if (isConfigured() == false)
             {
+                if (verbose) cout << "silentSendInplaceTest: configure" << endl;
                 configure(n, 2, mNumThreads, mMalType);
             }
 
@@ -113,6 +142,7 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
 
             if (hasSilentBaseOts() == false)
             {
+                if (verbose) cout << "silentSendInplaceTest: genSilentBaseOts" << endl;
                 MC_AWAIT(genSilentBaseOts(prng, chl));
             }
 
@@ -127,22 +157,31 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
             delta.resize(1);
             delta[0] = mDelta;
 
+            if (verbose) cout << "silentSendInplaceTest: mGen.expand" << endl;
             MC_AWAIT(mGen.expand(chl, delta, prng.get(), mB, PprfOutputFormat::Interleaved, true, mNumThreads));
 
 
             if (mMalType == SilentSecType::Malicious)
+            {
+                if (verbose) cout << "silentSendInplaceTest: ferretMalCheck" << endl;
                 MC_AWAIT(ferretMalCheck(chl, prng));
+            }
 
             setTimePoint("sender.expand.pprf_transpose");
             gTimer.setTimePoint("sender.expand.pprf_transpose");
 
             if (mDebug)
+            {   
+                if (verbose) cout << "silentSendInplaceTest: checkRT" << endl;
                 MC_AWAIT(checkRT(chl));
+            }
 
+            if (verbose) cout << "silentSendInplaceTest: compressTest" << endl;
             compressTest();
 
             mB.resize(mRequestNumOts);
 
+            if (verbose) cout << "silentSendInplaceTest: MC_END" << endl;
             MC_END();
         };
 
@@ -156,7 +195,7 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
                 type = ChoiceBitPacking::True
             );
 
-            if (verbose) cout << "silentSendTest: MC_AWAIT" << endl;
+            if (verbose) cout << "silentSendTest: silentSendInplaceTest" << endl;
             MC_AWAIT(silentSendInplaceTest(prng.get(), messages.size(), prng, chl));
             
             if (verbose) cout << "silentSendTest: hash" << endl;
@@ -167,8 +206,6 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
 
             if (verbose) cout << "silentSendTest: MC_END" << endl;
             MC_END();
-
-            if (verbose) cout << "silentSendTest: exiting..." << endl;
         }
 };
 
@@ -271,15 +308,14 @@ void silent_ot_test(CLP& cmd)
     SilentOtExtSenderTest sender;
     SilentOtExtReceiver recver;
 
-    sender.Verbose(verbose);
+    sender.setVerbose(verbose);
 
-    sender.mMultType = MultType::Tungsten;
-    recver.mMultType = MultType::Tungsten;
+    sender.mMultType = recver.mMultType = MultType::ExConv7x24;
 
-    // We need delta onlt for the correlated OTs.
+    // We need delta only for COT.
     // block delta = prng.get();
     
-    // The sender supplies 2 messages for every OT.
+    // The sender supplies (gets) 2 messages for every COT (ROT).
     std::vector<std::array<block, 2>> msg_s(numOTs);
 
     // The receiver gets 1 message for every OT.
