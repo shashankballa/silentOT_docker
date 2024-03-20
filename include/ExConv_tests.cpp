@@ -47,6 +47,21 @@ namespace osuCrypto
         return o;
     }
 
+    /*
+        This function tests the ExConvCodeTest class. 
+
+        Parameters:
+            @param F        : the field type
+            @param CoeffCtx : the coefficient context type. Specifies the algebraic structure 
+                of the which the coefficients are members. This context is used to define
+                how arithmetic operations are performed.
+            @param k        : message size
+            @param n        : code size
+            @param bw       : expander weight
+            @param aw       : accumulator size
+            @param sys      : whether the code is systematic or not
+            @param v        : verbose mode
+    */
     template<typename F, typename CoeffCtx>
     void exConvTest(u64 k, u64 n, u64 bw, u64 aw, bool sys, bool v = false)
     {
@@ -357,17 +372,24 @@ Part 4: Dual Encoding
         }
     }
 
+    /*
+        A wrapper function to run exConvTest with the given parameters.
+
+        Parameters:
+            @param cmd : the command line parser
+    */
     void ExConvCode_tester(const oc::CLP& cmd)
     {   
-
         // k: message size k
         auto K = cmd.getManyOr<u64>("k", { 32ul, 333 });
         
         // r: code rate for the code size n = k * r   
         auto R = cmd.getManyOr<double>("R", { 2.0, 3.0 });   
 
-        // bw: expander size, I think this is the number of bits in the expander matrix
+        // bw: expander size
         auto Bw = cmd.getManyOr<u64>("bw", { 7, 21 });
+
+        // aw: accumulator size
         auto Aw = cmd.getManyOr<u64>("aw", { 16, 24, 29 });
 
         // v: verbose mode
