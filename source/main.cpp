@@ -10,7 +10,7 @@ int main(int argc, char** argv){
 	cmd.parse(argc, argv);
 
     // Tests ExConvCode
-    // ExConvCode_encode_basic_bitwise_seq_test(cmd);
+    // ExConvCode_tester(cmd);
     
     // Tests silent Random OT
     silent_ot_test(cmd);

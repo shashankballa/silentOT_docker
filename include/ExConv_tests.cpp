@@ -47,370 +47,12 @@ namespace osuCrypto
         return o;
     }
 
-    //block mult2(block x, int imm8)
-    //{
-    //    assert(imm8 < 2);
-    //    if (imm8)
-    //    {
-    //        // mult x[1] * 2
-    // 
-    //    }
-    //    else
-    //    {
-    //        // x[0] * 2
-    //        __m128i carry = _mm_slli_si128(x, 8); 
-    //        carry = _mm_srli_epi64(carry, 63);  
-    //        x = _mm_slli_epi64(x, 1);
-    //        return _mm_or_si128(x, carry);
-    //
-    //        //return _mm_slli_si128(x, 8);
-    //    }
-    //    //TEMP[i] : = (TEMP1[0] and TEMP2[i])
-    //    //    FOR a : = 1 to i
-    //    //    TEMP[i] : = TEMP[i] XOR(TEMP1[a] AND TEMP2[i - a])
-    //    //    ENDFOR
-    //    //dst[i] : = TEMP[i]
-    //}
-    
     template<typename F, typename CoeffCtx>
     void exConvTest(u64 k, u64 n, u64 bw, u64 aw, bool sys, bool v = false)
     {
         // if verbose print the test and its parameters
         if(v){
             std::cout << "->-> exConvTest" << std::endl;
-            std::cout << "     Params: k=" << k << "; n=" << n << "; bw=" << bw << "; aw=" << aw;
-            // std::cout << "; sys=" << sys << "; F=" << typeid(F).name() ;
-            // std::cout << "; CoeffCtx=" << typeid(CoeffCtx).name();
-            std::cout << std::endl;
-        }
-
-
-        // The ExConv code instance
-        ExConvCodeTest code;
-        code.config(k, n, bw, aw, sys);
-        
-        // Offset for systematic coding
-        auto accOffset = sys * k;
-
-        // Vectors for testing the accumulation process of the ExConv code. 
-        // x1, x2 and x3 are initialized with random values:
-        //   x1 == x2 == x3, all same random values
-        // The accumulation process is performed differently on each vector:
-        //   x1 using accOneGen
-        //   x2 using accOne
-        //   x3 using bitwise operations)
-        // The accumulation results are compared to ensure they are equal.
-        std::vector<F> x1(n), x2(n), x3(n);
-
-        // Psuedo-random number generator
-        PRNG prng(CCBlock);
-
-        // Initialize x1, x2 and x3 with random values
-        // x1 == x2 == x3, all same random values
-        for (u64 i = 0; i < x1.size(); ++i)
-        {
-            x1[i] = x2[i] = x3[i] = prng.get();
-        }
-        std::vector<F> x1_init = x1;
-
-        // Coefficient context for operations
-        CoeffCtx ctx;
-
-        // Matrix coefficients for accumulation must have as 
-        // many bytes required to fill the accumulator width
-        std::vector<u8> matrixCoeffs(divCeil(aw, 8));
-
-        // bools to save verification results for each loop
-        bool x1_x2_nequal_acc  = true;
-        bool x1_x3_nequal_acc  = true;
-        bool x1_x2_nequal_accF = true;
-        bool x1_x3_nequal_accF = true;
-        bool y1_y2_nequal_exp  = true;
-        bool x4_y1_nequal_dual = true;
-
-//=====================================================================================================
-// Component 1: Testing Accumulation
-        for (u64 i = 0; i < n; ++i)
-        {   
-            // fill matrixCoeffs with random bytes
-            prng.get(matrixCoeffs.data(), matrixCoeffs.size());
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x1 Code Block
-            // Accumulate x1 using random coefficients from matrixCoeffs
-            code.accOneGen<F, CoeffCtx, true>(x1.data(), i, n, matrixCoeffs.data(), ctx);
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x2 Code Block
-            if (aw == 24)
-                // Accumulate x2 using random coefficients
-                code.accOne<F, CoeffCtx, true, 24>(x2.data(), i, n, matrixCoeffs.data(), ctx);
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x3 Code Block
-            // This code block is used to extract a u64 value from the matrixCoeffs vector.
-            // It ensures that the number of bytes copied is not greater than 8, which is the size of a u64.
-            // The extracted value is stored in the bits variable.
-
-            assert(aw <= 64); // Ensure that the accumulator width (aw) is not greater than 64 bits.
-
-            u64 bits = 0; // Initialize the bits variable to store the extracted value.
-
-            // Copy the bytes from matrixCoeffs to bits, up to a maximum of 8 bytes.
-            // This ensures that only the first 8 bytes of matrixCoeffs are copied, even if it has more bytes.
-            memcpy(&bits, matrixCoeffs.data(), std::min<u64>(matrixCoeffs.size(), 8));
-
-            // Accumulate x3 using bitwise operations
-            // This loop runs 'aw' times. In each iteration, it increments 'j'.
-            // The computation basically involves bitwise operations. Here it is written such that it can be
-            // performed with 64-bit integers. This computation can be significantly optimized for a verilog 
-            // (hardware) implementation.
-            u64 j = i + 1;
-            for (u64 a = 0; a < aw; ++a, ++j)
-            {
-                // It checks the least significant bit of 'bits'. If it's 1, it performs an operation.
-                if (bits & 1)
-                {
-                    // The operation is to add the 'i'-th element of 'x3' to the 'j'-th element.
-                    // The result is stored back into the 'j'-th element.
-                    // 'ctx.plus' is a method that presumably performs this addition operation.
-                    // The '% n' operation is a modulo operation that ensures 'j' is within the bounds of the array.
-                    ctx.plus(x3[j % n], x3[j % n], x3[i]);
-                }
-                // It then shifts 'bits' one bit to the right, effectively discarding the least significant bit.
-                bits >>= 1;
-            }
-            // x3[j] = x3[j] + x3[i]
-            ctx.plus(x3[j % n], x3[j % n], x3[i]);
-            // x3[j] = x3[j] * x3[j]
-            ctx.mulConst(x3[j % n], x3[j % n]);
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Verfication Code Block
-            j = i + 1;
-            for (u64 a = 0; a <= aw; ++a, ++j)
-            {
-                // Check if x1 and x2 are equal (only for aw = 24)
-                if (aw == 24 && x1[j%n] != x2[j % n])
-                {
-                    std::cout << j % n << " " << ctx.str(x1[j % n]) << " " << ctx.str(x2[j % n]) << std::endl;
-                    throw RTE_LOC;
-                }
-
-                // x1 and x3 must be equal!
-                if (x1[j % n] != x3[j % n])
-                {
-                    std::cout << j % n << " " << ctx.str(x1[j % n]) << " " << ctx.str(x3[j % n]) << std::endl;
-                    throw RTE_LOC;
-                }
-            }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        }
-        std::vector<F> x1_acc = x1;
-//=====================================================================================================
-// Component 2: Testing Accumulate-Fixed and Refill-Coefficients
-        // Here, we test the accumulateFixed method of the ExConvCodeTest class on x1 and x2.
-        // x1 is accumulated using an accumulator size of 0, 
-        // while x2 is accumulated using an accumulator size of 24.
-        u64 size = n - accOffset;
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x1 Code Block
-        code.accumulateFixed<F, CoeffCtx, 0>(x1.data() + accOffset, size, ctx, code.mSeed);
-        if (code.mAccTwice)
-            code.accumulateFixed<F, CoeffCtx, 0>(x1.data() + accOffset, size, ctx, ~code.mSeed);
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x2 Code Block
-        if (aw == 24)
-        {
-            code.accumulateFixed<F, CoeffCtx, 24>(x2.data() + accOffset, size, ctx, code.mSeed);
-
-            if (code.mAccTwice)
-                code.accumulateFixed<F, CoeffCtx, 24>(x2.data() + accOffset, size, ctx, ~code.mSeed);
-        }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x3 Code Block
-        // Here, we perform the expansion process using explicit bitwise operations on x3 and compare the 
-        // result to x1 which was expanded using accumulateFixed from ExConvCodeTest class.
-        for (auto r = 0; r < 1 + code.mAccTwice; ++r)
-        {
-            PRNG coeffGen(r ? ~code.mSeed : code.mSeed);
-            u8* mtxCoeffIter = (u8*)coeffGen.mBuffer.data();
-            auto mtxCoeffEnd = mtxCoeffIter + coeffGen.mBuffer.size() * sizeof(block) - divCeil(aw, 8);
-
-            auto x = x3.data() + accOffset;
-            u64 i = 0;
-            while (i < size)
-            {
-                auto xi = x + i;
-
-                if (mtxCoeffIter > mtxCoeffEnd)
-                {
-                    // generate more mtx coefficients
-                    ExConvCodeTest::refill(coeffGen);
-                    mtxCoeffIter = (u8*)coeffGen.mBuffer.data();
-                }
-
-                // add xi to the next positions
-                auto j = (i + 1) % size;
-
-                u64 bits = 0;
-                memcpy(&bits, mtxCoeffIter, divCeil(aw, 8));
-                for (u64 a = 0; a < aw; ++a)
-                {
-
-                    if (bits & 1)
-                    {
-                        auto xj = x + j;
-                        ctx.plus(*xj, *xj, *xi);
-                    }
-                    bits >>= 1;
-                    j = (j + 1) % size;
-                }
-
-                {
-                    auto xj = x + j;
-                    ctx.plus(*xj, *xj, *xi);
-                    ctx.mulConst(*xj, *xj);
-                }
-
-                ++mtxCoeffIter;
-
-                ++i;
-            }
-        }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Verfication Code Block
-        // If the accumulator width is 24, the results x1 and x2 are compared to ensure they are equal.
-        if (aw == 24)
-        {
-            // x1 and x2 must be equal!
-            if (x1 != x2)
-            {
-                for (u64 i = 0; i < x1.size(); ++i)
-                {
-                    std::cout << i << " " << ctx.str(x1[i]) << " " << ctx.str(x2[i]) << std::endl;
-                }
-                throw RTE_LOC;
-            }
-        }
-        // x1 and x3 must be equal!
-        if (x1 != x3)
-        {
-            for (u64 i = 0; i < x1.size(); ++i)
-            {
-                std::cout << i << " " << ctx.str(x1[i]) << " " << ctx.str(x3[i]) << std::endl;
-            }
-            throw RTE_LOC;
-        }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        std::vector<F> x1_accF = x1;
-//====================================================================================================
-// Component 3: Expand
-        // Here, we test the expansion process, performed on x1, with two different methods:
-        //   y1 using expand function from ExpanderCodeTest
-        //   y2 using explicit bitwise operations
-        // The results are compared to ensure they are equal.
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// y1 Code Block
-        std::vector<F> y1(k), y2(k);
-        if (sys)
-        {
-            std::copy(x1.data(), x1.data() + k, y1.data());
-            y2 = y1;
-            code.mExpander.expand<F, CoeffCtx, true>(x1.data() + accOffset, y1.data());
-        }
-        else
-        {
-            code.mExpander.expand<F, CoeffCtx, false>(x1.data() + accOffset, y1.data());
-        }
-
-        u64 step, exSize, regCount = 0;;
-        if (code.mExpander.mRegular)
-        {
-            regCount = divCeil(code.mExpander.mExpanderWeight, 2);
-            exSize = step = code.mExpander.mCodeSize / regCount;
-        }
-        else
-        {
-            step = 0;
-            exSize = n;
-        }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// y2 Code Block
-
-        detail::ExpanderModd regExp(code.mExpander.mSeed^ block(342342134, 23421341), exSize);
-        detail::ExpanderModd fullExp(code.mExpander.mSeed, code.mExpander.mCodeSize);
-
-        u64 i = 0;
-        auto main = k / 8 * 8;
-        for (; i < main; i += 8)
-        {
-            
-            for (u64 j = 0; j < regCount; ++j)
-            {
-                for (u64 p = 0; p < 8; ++p)
-                {
-                    auto idx = regExp.get() + step * j;
-                    ctx.plus(y2[i + p], y2[i + p], x1[idx + accOffset]);
-                }
-            }
-            for (u64 j = 0; j < code.mExpander.mExpanderWeight - regCount; ++j)
-            {
-                for (u64 p = 0; p < 8; ++p)
-                {
-                    auto idx = fullExp.get();
-                    ctx.plus(y2[i + p], y2[i + p], x1[idx + accOffset]);
-                }
-            }
-        }
-
-        for (; i < k; ++i)
-        {
-            for (u64 j = 0; j < regCount; ++j)
-            {
-                auto idx = regExp.get() + step * j;
-                ctx.plus(y2[i], y2[i], x1[idx + accOffset]);
-            }
-            for (u64 j = 0; j < code.mExpander.mExpanderWeight - regCount; ++j)
-            {
-                auto idx = fullExp.get();
-                ctx.plus(y2[i], y2[i], x1[idx + accOffset]);
-            }
-        }
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Verfication Code Block
-        // y1 and y2 must be equal!
-        if (y1 != y2)
-            throw RTE_LOC;
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        std::vector<F> x1_exp = y1;
-//====================================================================================================
-// Component 4: Dual Encoding
-        // Here, we test the dual encoding process which includes accumulateFixed and expand.
-        // x4 is used to hold a copy of x1 after the accumulation process. We perform the dual encoding
-        // process on x4 and compare the result to y1, i.e.:
-        //     dualEncode(x1_acc) == Expand(AccumulateFixed(x1_acc))
-        // where x1_acc is the value of x1 after the accumulation process.
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x4 Code Block
-        // x4 is used to hold a copy of x1 after the accumulation process. 
-        // It is used to test the dual encoding process of the ExConv code.
-        std::vector<F> x4 = x1_acc;
-        code.dualEncode<F, CoeffCtx>(x4.begin(), {});
-        x4.resize(k);
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Verfication Code Block
-        // x4 and y1 must be equal!
-        if (x4 != y1)
-            throw RTE_LOC;
-//====================================================================================================
-        if(v){
-            std::cout << "exConvTest ->->" << std::endl;
-        }
-    }
-
-    template<typename F, typename CoeffCtx>
-    void exConvTestBitWiseSeq(u64 k, u64 n, u64 bw, u64 aw, bool sys, bool v = false)
-    {
-        // if verbose print the test and its parameters
-        if(v){
-            std::cout << "->-> exConvTestBitWiseSeq" << std::endl;
             std::cout << "     Params: k=" << k << "; n=" << n << "; bw=" << bw << "; aw=" << aw;
             // std::cout << "; sys=" << sys << "; F=" << typeid(F).name() ;
             // std::cout << "; CoeffCtx=" << typeid(CoeffCtx).name();
@@ -444,7 +86,7 @@ namespace osuCrypto
         }
 /*
 =========================================================================================================
-Component 1: Testing Accumulation
+Part 1: Testing Accumulation
         Here, we test the accumulation process of the ExConv code. 
         x_acc and x_acc_b are initialized with the same random values from x_init
         The accumulation process is performed differently on each vector:
@@ -452,19 +94,19 @@ Component 1: Testing Accumulation
           x_acc_b using bitwise operations
         The accumulation results are compared to ensure they are equal.
 =========================================================================================================
-Component 2: Testing Accumulate-Fixed and Refill-Coefficients
+Part 2: Testing Accumulate-Fixed and Refill-Coefficients
         Here, we test the accumulateFixed method of the ExConvCodeTest class on x_acc and compare with
         the result of performing explicit bitwise operations on x_acc_b.
         x_accF is accumulated using an accumulator size of 0, 
         while x_accF_b is accumulated using explicit bitwise operations.
 ========================================================================================================
-Component 3: Expand
+Part 3: LDPC-Expand
         Here, we test the expansion process, performed on x_accF, with two different methods:
           x_exp using expand function from ExpanderCodeTest
           x_exp_b using explicit bitwise operations
         The results are compared to ensure they are equal.
 ========================================================================================================
-Component 4: Dual Encoding
+Part 4: Dual Encoding
         Here, we test the dual encoding process which performs accumulateFixed + expand.
         We perform the dual encoding on the result of the accumulation process and compare the result
         to x_exp, i.e.:
@@ -473,9 +115,11 @@ Component 4: Dual Encoding
 ========================================================================================================
 */
 //======================================================================================================
-// Computing with ExConvCodeTest functions
+// Computing with ExConvCodeTest functions to get the expected results that will be compared with the
+// results from explicit bitwise operations later.
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x_acc Code Block
+// Part 1: Accumulation with ExConvCode functions
+        // x_acc will hold the result of the accumulation process
         std::vector<F> x_acc = x_init;
         for (u64 i = 0; i < n; ++i)
         {   
@@ -484,18 +128,19 @@ Component 4: Dual Encoding
         }
         u64 size = n - accOffset;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x_accF Code Block
+// Part 2: Accumulate-Fixed with ExConvCode functions
+        // x_accF will hold the result of the accumulate-fixed process
         std::vector<F> x_accF = x_acc;
         code.accumulateFixed<F, CoeffCtx, 0>(x_accF.data() + accOffset, size, ctx, code.mSeed);
         if (code.mAccTwice)
             code.accumulateFixed<F, CoeffCtx, 0>(x_accF.data() + accOffset, size, ctx, ~code.mSeed);
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x_exp Code Block
-        std::vector<F> x_exp(k), x_exp_b(k);
+// Part 3: LDPC-Expand with ExConvCode functions
+        // x_exp will hold the result of the LDPC-Expansion process
+        std::vector<F> x_exp(k);
         if (sys)
         {
             std::copy(x_accF.data(), x_accF.data() + k, x_exp.data());
-            x_exp_b = x_exp;
             code.mExpander.expand<F, CoeffCtx, true>(x_accF.data() + accOffset, x_exp.data());
         }
         else
@@ -515,14 +160,16 @@ Component 4: Dual Encoding
             exSize = n;
         }
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x_dual Code Block
+// Part 4: Dual Encoding with ExConvCode functions
+        // x_dual will hold the result of the dual encoding process
         std::vector<F> x_dual = x_acc;
         code.dualEncode<F, CoeffCtx>(x_dual.begin(), {});
         x_dual.resize(k);
 //======================================================================================================
 // Performing same computation with explicit bitwise operations
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x_acc_b Code Block
+// Part 1: Accumulation with Bitwise Operations
+        // x_acc_b will hold the result of the accumulation process
         std::vector<F> x_acc_b = x_init;
         for (u64 i = 0; i < n; ++i)
         {  
@@ -563,7 +210,8 @@ Component 4: Dual Encoding
             ctx.mulConst(x_acc_b[j % n], x_acc_b[j % n]);
         }
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x_accF_b Code Block
+// Part 2: Accumulate-Fixed with Bitwise Operations
+        // x_accF_b will hold the result of the accumulate-fixed process
         std::vector<F> x_accF_b = x_acc_b;
         // Here, we perform the expansion process using explicit bitwise operations on x_acc_b and 
         // compare the result to x1 which was expanded using accumulateFixed from ExConvCodeTest class.
@@ -615,7 +263,14 @@ Component 4: Dual Encoding
             }
         }
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// x_exp_b Code Block
+// Part 3: LDPC-Expand with Bitwise Operations
+        // x_exp_b will hold the result of the LDPC-Expansion process
+        std::vector<F> x_exp_b(k);
+        
+        if (sys)
+        {
+            std::copy(x_accF_b.data(), x_accF_b.data() + k, x_exp_b.data());
+        }
 
         detail::ExpanderModd regExp(code.mExpander.mSeed^ block(342342134, 23421341), exSize);
         detail::ExpanderModd fullExp(code.mExpander.mSeed, code.mExpander.mCodeSize);
@@ -689,12 +344,13 @@ Component 4: Dual Encoding
             throw RTE_LOC;
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         if(v){
-            std::cout << "exConvTestBitWiseSeq ->->" << std::endl;
+            std::cout << "exConvTest ->->" << std::endl;
         }
     }
 
-    void ExConvCode_encode_basic_test(const oc::CLP& cmd)
+    void ExConvCode_tester(const oc::CLP& cmd)
     {   
+
         // k: message size k
         auto K = cmd.getManyOr<u64>("k", { 32ul, 333 });
         
@@ -711,98 +367,23 @@ Component 4: Dual Encoding
         // Print the test name
         if (v)
         {
-            std::cout << "->-> ExConvCode_encode_basic_test" << std::endl;
+            std::cout << "->-> ExConvCode_tester" << std::endl;
         }
 
         for (auto k : K) for (auto r : R) for (auto bw : Bw) for (auto aw : Aw) for (auto sys : { false, true })
         {
 
             auto n = k * r;
-
-            if (v)
-            {
-                std::cout << "starting exConvTest with: F=u32; CoeffCtx=CoeffCtxInteger" << std::endl;
-            }
-            exConvTest<u32, CoeffCtxInteger>(k, n, bw, aw, sys, v);
-            
-            if (v)
-            {
-                std::cout << "starting exConvTest with: F=u8; CoeffCtx=CoeffCtxInteger" << std::endl;
-            }
-            exConvTest<u8, CoeffCtxInteger>(k, n, bw, aw, sys, v);
 
             if (v)
             {
                 std::cout << "starting exConvTest with: F=block; CoeffCtx=CoeffCtxGF128" << std::endl;
             }
             exConvTest<block, CoeffCtxGF128>(k, n, bw, aw, sys, v);
-
-            if (v)
-            {
-                std::cout << "starting exConvTest with: F=std::array<u8, 4>; CoeffCtx=CoeffCtxArray<u8, 4>" << std::endl;
-            }
-            exConvTest<std::array<u8, 4>, CoeffCtxArray<u8, 4>>(k, n, bw, aw, sys, v);
         }
         if (v)
         {
-            std::cout << "ExConvCode_encode_basic_test ->->" << std::endl;
-        }
-    }
-
-    void ExConvCode_encode_basic_bitwise_seq_test(const oc::CLP& cmd)
-    {   
-
-        // k: message size k
-        auto K = cmd.getManyOr<u64>("k", { 32ul, 333 });
-        
-        // r: code rate for the code size n = k * r   
-        auto R = cmd.getManyOr<double>("R", { 2.0, 3.0 });   
-
-        // bw: expander size, I think this is the number of bits in the expander matrix
-        auto Bw = cmd.getManyOr<u64>("bw", { 7, 21 });
-        auto Aw = cmd.getManyOr<u64>("aw", { 16, 24, 29 });
-
-        // v: verbose mode
-        bool v = cmd.isSet("v");
-
-        // Print the test name
-        if (v)
-        {
-            std::cout << "->-> ExConvCode_encode_basic_bitwise_seq_test" << std::endl;
-        }
-
-        for (auto k : K) for (auto r : R) for (auto bw : Bw) for (auto aw : Aw) for (auto sys : { false, true })
-        {
-
-            auto n = k * r;
-
-            if (v)
-            {
-                std::cout << "starting exConvTestBitWiseSeq with: F=u32; CoeffCtx=CoeffCtxInteger" << std::endl;
-            }
-            exConvTestBitWiseSeq<u32, CoeffCtxInteger>(k, n, bw, aw, sys, v);
-            
-            if (v)
-            {
-                std::cout << "starting exConvTestBitWiseSeq with: F=u8; CoeffCtx=CoeffCtxInteger" << std::endl;
-            }
-            exConvTestBitWiseSeq<u8, CoeffCtxInteger>(k, n, bw, aw, sys, v);
-
-            if (v)
-            {
-                std::cout << "starting exConvTestBitWiseSeq with: F=block; CoeffCtx=CoeffCtxGF128" << std::endl;
-            }
-            exConvTestBitWiseSeq<block, CoeffCtxGF128>(k, n, bw, aw, sys, v);
-
-            if (v)
-            {
-                std::cout << "starting exConvTestBitWiseSeq with: F=std::array<u8, 4>; CoeffCtx=CoeffCtxArray<u8, 4>" << std::endl;
-            }
-            exConvTestBitWiseSeq<std::array<u8, 4>, CoeffCtxArray<u8, 4>>(k, n, bw, aw, sys, v);
-        }
-        if (v)
-        {
-            std::cout << "ExConvCode_encode_basic_bitwise_seq_test ->->" << std::endl;
+            std::cout << "ExConvCode_tester ->->" << std::endl;
         }
     }
 
