@@ -52,9 +52,9 @@ namespace osuCrypto
 
         Parameters:
             @param F        : the field type
-            @param CoeffCtx : the coefficient context type. Specifies the algebraic structure 
-                of the which the coefficients are members. This context is used to define
-                how arithmetic operations are performed.
+            @param CoeffCtx : the coefficient context type. Specifies the algebraic group of 
+                which the coefficients are members. This context is used to define the arithmetic
+                operations (+, *) for the algebraic group.
             @param k        : message size
             @param n        : code size
             @param bw       : expander weight
