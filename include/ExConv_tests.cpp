@@ -110,11 +110,11 @@ Part 4: Dual Encoding
         Here, we test the dual encoding process which performs accumulateFixed + expand.
         We perform the dual encoding on the result of the accumulation process and compare the result
         to x_exp, i.e.:
-            x_dual = dualEncode(x_acc) == Expand(AccumulateFixed(x_acc)) = x_exp
+            x_dual = dualEncode(x_acc) == LDPC-Expand(AccumulateFixed(x_acc)) = x_exp
         where x_acc is the result of the accumulation process on x_init.
 ========================================================================================================
 */
-//======================================================================================================
+// =====================================================================================================
 // Computing with ExConvCodeTest functions to get the expected results that will be compared with the
 // results from explicit bitwise operations later.
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -165,7 +165,8 @@ Part 4: Dual Encoding
         std::vector<F> x_dual = x_acc;
         code.dualEncode<F, CoeffCtx>(x_dual.begin(), {});
         x_dual.resize(k);
-//======================================================================================================
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// =====================================================================================================
 // Performing same computation with explicit bitwise operations
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Part 1: Accumulation with Bitwise Operations
@@ -310,10 +311,11 @@ Part 4: Dual Encoding
                 ctx.plus(x_exp_b[i], x_exp_b[i], x_accF[idx + accOffset]);
             }
         }
-//======================================================================================================
-// Verifying the results from bitwise operations with the results from ExConvCodeTest functions
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Verfication Code Block
+// =====================================================================================================
+// Verifying the results from bitwise operations with the results from ExConvCode functions
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Part 1: Accumulation Verification
         for (u64 i = 0; i < n; ++i)
         {  
             u64 j = i + 1;
@@ -327,6 +329,8 @@ Part 4: Dual Encoding
                 }
             }
         }
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Part 2: Accumulate-Fixed Verification
         // x_accF and x_accF_b must be equal!
         if (x_accF != x_accF_b)
         {
@@ -336,9 +340,13 @@ Part 4: Dual Encoding
             }
             throw RTE_LOC;
         }
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Part 3: LDPC-Expand Verification
         // x_exp and x_exp_b must be equal!
         if (x_exp != x_exp_b)
             throw RTE_LOC;
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Part 4: Dual Encoding Verification
         // x_exp and x_exp must be equal!
         if (x_dual != x_exp_b)
             throw RTE_LOC;
