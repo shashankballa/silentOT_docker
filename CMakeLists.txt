@@ -9,6 +9,7 @@ find_package(libOTe REQUIRED)
 add_executable(main source/main.cpp include/ExConv_tests.cpp)
 
 # Set compile options
+# NB: REMOVE -g after debugging!
 target_compile_options(main PUBLIC 
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -g> -lpthread)
 

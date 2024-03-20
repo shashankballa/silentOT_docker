@@ -117,6 +117,51 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
             }
             if (verbose) cout << "compressTest: exiting..." << endl;
         }
+            
+        void compressExConvTest()
+        {
+            if (verbose) cout << "compressExConvTest: starting..." << endl;
+            switch (mMultType)
+            {
+            case osuCrypto::MultType::ExConv7x24:
+            case osuCrypto::MultType::ExConv21x24:
+            {
+
+                u64 expanderWeight = 0, accWeight = 0, _1;
+                double _2;
+                ExConvConfigure(mMultType, _1, expanderWeight, accWeight, _2);
+
+                if (verbose){
+                    cout << "compressExConvTest: Expander Weight   : " << expanderWeight << endl;
+                    cout << "compressExConvTest: Accumulator Weight: " << accWeight << endl;
+                    cout << "compressExConvTest: Scaler            : " << _1 << endl;
+                    cout << "compressExConvTest: MinDist           : " << _2 << endl;
+                }
+
+                ExConvCodeTest exConvEncoder;
+                exConvEncoder.config(mRequestNumOts, mNoiseVecSize, expanderWeight, accWeight);
+
+                if (verbose){
+                    cout << "compressExConvTest: ExConvCodeTest Message Size    : ";
+                    cout << exConvEncoder.mMessageSize << endl;
+                    cout << "compressExConvTest: ExConvCodeTest Code Size       : ";
+                    cout << exConvEncoder.mCodeSize << endl;
+                    cout << "compressExConvTest: ExConvCodeTest Accumulator Size: ";
+                    cout << exConvEncoder.mAccumulatorSize << endl;
+                    cout << "compressExConvTest: ExConvCodeTest Systematic      : ";
+                    cout << boolalpha << exConvEncoder.mSystematic << endl;
+                }
+
+                if (verbose) cout << "compressExConvTest: ExConvCodeTest.dualEncode" << endl;
+                exConvEncoder.dualEncode<block, CoeffCtxGF2>(mB.begin(), {});
+                break;
+            }
+            default:
+                throw RTE_LOC;
+                break;
+            }
+            if (verbose) cout << "compressExConvTest: exiting..." << endl;
+        }
 
         task<> silentSendInplaceTest(
             block d,
@@ -178,8 +223,8 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
                 MC_AWAIT(checkRT(chl));
             }
 
-            if (verbose) cout << "silentSendInplaceTest: compressTest" << endl;
-            compressTest();
+            if (verbose) cout << "silentSendInplaceTest: compressExConvTest" << endl;
+            compressExConvTest();
 
             mB.resize(mRequestNumOts);
 
@@ -301,7 +346,7 @@ void silent_ot_test(CLP& cmd)
     if (numOTs == 0) numOTs = 1 << 20;
 
     auto numThreads = cmd.getOr("t", 4);
-    bool verbose = (cmd.getOr("v", 1) >= 1);
+    bool verbose = (cmd.getOr("v", 0) >= 1);
     u64 scaler = cmd.getOr("s", 2);
 
     PRNG prng(toBlock(cmd.getOr("seed", 0)));

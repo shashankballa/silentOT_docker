@@ -624,7 +624,6 @@ Component 4: Dual Encoding
         auto main = k / 8 * 8;
         for (; i < main; i += 8)
         {
-            
             for (u64 j = 0; j < regCount; ++j)
             {
                 for (u64 p = 0; p < 8; ++p)
