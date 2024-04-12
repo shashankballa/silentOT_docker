@@ -3,15 +3,7 @@
 
 This repository contains a Dockerized implementation of the Silent Oblivious Transfer (OT) protocol from the libOTe library, aimed at facilitating development and debugging environments. Follow these instructions to build and run the project within a Docker container.
 
-## Quick Start
-
-### Prerequisites
-
-- Docker
-- Docker Compose
-- Git
-
-### Setup and Build
+## 1. Quick Start
 
 1. **Clone the Repository**
 
@@ -36,7 +28,7 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     ```
     git submodule update --init --recursive
     ```
-#### Build and run locally
+### 1.1 Build and run locally
 
 4. **Build and install libOTe locally**
 
@@ -75,7 +67,7 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     ```
 
 
-#### Build and run with Docker
+### 1.2 Build and run with Docker
 
 4. **Build Docker Image**
     
@@ -95,12 +87,11 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     
     If the command `docker compose` returns a "no such command" error, try using `docker-compose` instead.
 
-### Debugging with GDB 
+#### 1.2.1 Debugging with GDB 
 
 6. **Modify `docker-compose.yml` to enable debugging**
 
     Comment the line `command: ./build/main ...` and uncomment the line `tty: true`.
-
 
 7. **Attach to the Container's Shell**
 
@@ -122,7 +113,7 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     * In case of a crash, GDB will indicate where the issue occurred. Utilize GDB commands like `bt` (backtrace) to inspect the state and flow of the program.
     * To exit GDB and the container's shell after debugging, `exit`.
 
-### Shut down the Container
+#### 1.2.2 Shut down the Container
 
 To stop and remove the Docker container and resources, run:
 
