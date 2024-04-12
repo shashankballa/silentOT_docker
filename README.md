@@ -36,6 +36,46 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     ```
     git submodule update --init --recursive
     ```
+#### Build and run locally
+
+4. **Build and install libOTe locally**
+
+    Enter the directory, build, install and exit:
+    
+    ```
+    cd libOTe
+
+    python3 build.py --all --boost --sodium
+
+    sudo python3 build.py --install
+
+    cd ..
+    ```
+
+5. **Build source files**
+
+    Create the build directory, enter and build:
+
+    ```
+    mkdir build
+    
+    cd build
+
+    cmake ..
+
+    make
+    ```
+
+6. **Run the executable**
+
+    Run `main` with desired options:
+
+    ```
+    ./main -v 1 -nn 20
+    ```
+
+
+#### Build and run with Docker
 
 4. **Build Docker Image**
     
@@ -59,7 +99,7 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
 
 We are currently fixing few issues with our project, follow these steps to use GDB within the Docker container.
 
-1. **Attach to the Container's Shell**
+6. **Attach to the Container's Shell**
 
     In a **new terminal**, attach to the container's shell:
 

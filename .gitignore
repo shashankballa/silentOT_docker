@@ -10,3 +10,5 @@
 # Ignore the local history file
 .history/
 
+# Ignore the build folder
+build/

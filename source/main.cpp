@@ -10,10 +10,10 @@ int main(int argc, char** argv){
 	cmd.parse(argc, argv);
 
     // Tests ExConvCode
-    // ExConvCode_tester(cmd);
+    ExConvCode_tester(cmd);
     
     // Tests silent Random OT
-    silent_ot_test(cmd);
+    // silent_ot_test(cmd);
 
     return 0;
 }

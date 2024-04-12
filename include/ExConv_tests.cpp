@@ -83,6 +83,7 @@ namespace osuCrypto
         // Psuedo-random number generator
         PRNG prng(CCBlock);
         
+        // Initial input vector of random values
         std::vector<F> x_init(n);
         for (u64 i = 0; i < x_init.size(); ++i)
         {
@@ -112,8 +113,6 @@ Part 1: Testing Accumulation
 Part 2: Testing Accumulate-Fixed and Refill-Coefficients
         Here, we test the accumulateFixed method of the ExConvCodeTest class on x_acc and compare with
         the result of performing explicit bitwise operations on x_acc_b.
-        x_accF is accumulated using an accumulator size of 0, 
-        while x_accF_b is accumulated using explicit bitwise operations.
 ========================================================================================================
 Part 3: LDPC-Expand
         Here, we test the expansion process, performed on x_accF, with two different methods:
