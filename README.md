@@ -95,11 +95,14 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     
     If the command `docker compose` returns a "no such command" error, try using `docker-compose` instead.
 
-### [*Temporary*] Debugging with GDB 
+### Debugging with GDB 
 
-We are currently fixing few issues with our project, follow these steps to use GDB within the Docker container.
+6. **Modify `docker-compose.yml` to enable debugging**
 
-6. **Attach to the Container's Shell**
+    Comment the line `command: ./build/main ...` and uncomment the line `tty: true`.
+
+
+7. **Attach to the Container's Shell**
 
     In a **new terminal**, attach to the container's shell:
 
@@ -107,7 +110,7 @@ We are currently fixing few issues with our project, follow these steps to use G
     docker exec -it silentot-test bash
     ```
 
-7. **Run with GDB**
+8. **Run with GDB**
 
     In the **container's shell**, run executable under GDB:
 
