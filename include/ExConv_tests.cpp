@@ -246,6 +246,7 @@ Part 4: Dual Encoding
                 {
                     // generate more mtx coefficients
                     ExConvCodeTest::refill(coeffGen);
+                    // for verilog prototyping assign random value to mtxCoeffIter
                     mtxCoeffIter = (u8*)coeffGen.mBuffer.data();
                 }
 

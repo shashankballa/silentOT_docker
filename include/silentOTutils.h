@@ -32,51 +32,69 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
             this->verbose = verbose;
         }
             
-        void compressExConvTest()
-        {
-            if (verbose) cout << "compressExConvTest: starting..." << endl;
-            switch (mMultType)
-            {
-            case osuCrypto::MultType::ExConv7x24:
-            case osuCrypto::MultType::ExConv21x24:
-            {
+        void compressExConv7x24()
+        {   
+            // Make sure that MultType is ExConv7x24
+            if (mMultType != MultType::ExConv7x24)
+                throw std::invalid_argument("mMultType != MultType::ExConv7x24 " LOCATION);
 
-                u64 expanderWeight = 0, accWeight = 0, _1;
-                double _2;
-                ExConvConfigure(mMultType, _1, expanderWeight, accWeight, _2);
+            if (verbose) cout << "compressExConv7x24: starting..." << endl;
+            
+            // The following performs: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            //      ExConvConfigure(mMultType, _1, expanderWeight, accWeight, _2);
+            // u64 expanderWeight = 7;
+            // u64 accWeight = 24;
+            // u64 scaler = 2;
+            // double minDist = 0.15;
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            ExConvCodeTest xce; // Expand-Convolute Encoder
+            // The following performs: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            //      xce.config(mRequestNumOts, mNoiseVecSize, expanderWeight, accWeight);
+            xce.mSeed            = block(9996754675674599, 56756745976768754);
+            xce.mAccumulatorSize = 24;
+            xce.mSystematic      = true;
+            xce.mMessageSize     = mRequestNumOts;
+            xce.mCodeSize        = mNoiseVecSize;
+            //      The following performs: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            //          xce.mExpander.config(mRequestNumOts, sysCodeSize, expanderWeight, regularExpander, _seed);
+            xce.mExpander.mMessageSize = mRequestNumOts;
+            u64 sysCodeSize = mNoiseVecSize - (mRequestNumOts * xce.mSystematic);
+            xce.mExpander.mCodeSize = sysCodeSize;
+            xce.mExpander.mExpanderWeight = 7;
+            xce.mExpander.mRegular = true;
+            block _ccblock = toBlock(0xcccccccccccccccc, 0xcccccccccccccccc);
+            xce.mExpander.mSeed = xce.mSeed ^ _ccblock;
+            //      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-                if (verbose){
-                    cout << "compressExConvTest: Expander Weight   : " << expanderWeight << endl;
-                    cout << "compressExConvTest: Accumulator Weight: " << accWeight << endl;
-                    cout << "compressExConvTest: Scaler            : " << _1 << endl;
-                    cout << "compressExConvTest: MinDist           : " << _2 << endl;
-                }
-
-                ExConvCodeTest exConvEncoder;
-                exConvEncoder.config(mRequestNumOts, mNoiseVecSize, expanderWeight, accWeight);
-
-                if (verbose){
-                    cout << "compressExConvTest: ExConvCodeTest Message Size    : ";
-                    cout << exConvEncoder.mMessageSize << endl;
-                    cout << "compressExConvTest: ExConvCodeTest Code Size       : ";
-                    cout << exConvEncoder.mCodeSize << endl;
-                    cout << "compressExConvTest: ExConvCodeTest Accumulator Size: ";
-                    cout << exConvEncoder.mAccumulatorSize << endl;
-                    cout << "compressExConvTest: ExConvCodeTest Systematic      : ";
-                    cout << boolalpha << exConvEncoder.mSystematic << endl;
-                }
-
-                if (verbose) cout << "compressExConvTest: ExConvCodeTest.dualEncode" << endl;
-                exConvEncoder.dualEncode<block, CoeffCtxGF2>(mB.begin(), {});
-                break;
+            if (verbose){
+                cout << "compressExConv7x24: Expander Weight   : ";
+                cout << xce.mExpander.mExpanderWeight << endl;
+                cout << "compressExConv7x24: Accumulator Weight: ";
+                cout << xce.mAccumulatorSize << endl;
+                cout << "compressExConv7x24: ExConvCodeTest Message Size    : ";
+                cout << xce.mMessageSize << endl;
+                cout << "compressExConv7x24: ExConvCodeTest Code Size       : ";
+                cout << xce.mCodeSize << endl;
+                cout << "compressExConv7x24: ExConvCodeTest Accumulator Size: ";
+                cout << xce.mAccumulatorSize << endl;
+                cout << "compressExConv7x24: ExConvCodeTest Systematic      : ";
+                cout << boolalpha << xce.mSystematic << endl;
             }
-            default:
-                throw RTE_LOC;
-                break;
-            }
-            if (verbose) cout << "compressExConvTest: exiting..." << endl;
+
+            if (verbose) cout << "compressExConv7x24: ExConvCodeTest.dualEncode" << endl;
+            xce.dualEncode<block, CoeffCtxGF2>(mB.begin(), {});
+            if (verbose) cout << "compressExConv7x24: exiting..." << endl;
         }
 
+        /* 
+            This function is used to test the silent OT protocol.
+            It is a wrapper around the silentSendInplaceTest function.
+            arguments:
+                messages: the messages to be sent
+                prng: the PRNG
+                chl: the socket
+        */
         task<> silentSendInplaceTest(
             block d,
             u64 n,
@@ -137,10 +155,18 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
                 MC_AWAIT(checkRT(chl));
             }
 
-            if (verbose) cout << "silentSendInplaceTest: compressExConvTest" << endl;
-            compressExConvTest();
+
+            // Input for ExConv is mB. ExConv overwrites mB with the result of ExConv.
+            // to check input, print/save mB.
+            cout << "silentSendInplaceTest: Size mB before compress (ExConv): " << mB.size() << endl;
+            for(auto i = 0; i < mB.size(); i++){
+                // cout << mB[i] << endl;
+            }
+            if (verbose) cout << "silentSendInplaceTest: compressExConv7x24" << endl;
+            compressExConv7x24();
 
             mB.resize(mRequestNumOts);
+            cout << "silentSendInplaceTest: Size mB after compress (ExConv): " << mB.size() << endl;
 
             if (verbose) cout << "silentSendInplaceTest: MC_END" << endl;
             MC_END();
@@ -170,31 +196,96 @@ class SilentOtExtSenderTest : public SilentOtExtSender {
         }
 };
 
-void fakeBase(u64 n,
-    u64 s,
+/*
+    This is a tesing function that sets the base OTs for sender and corresponding 
+    base OTs for the receiver.
+    arguments:
+        numOTs: number of OTs
+        scaler: scaler
+        threads: number of threads
+        prng: the PRNG
+        recver: the receiver
+        sender: the sender
+
+*/
+void fakeBaseExConv7x24(u64 numOTs,
     u64 threads,
     PRNG& prng,
-    SilentOtExtReceiver& recver, SilentOtExtSenderTest& sender)
+    SilentOtExtReceiver& recver, SilentOtExtSenderTest& sender,
+    bool verbose = false)
 {
-    sender.configure(n, s, threads);
-    auto count = sender.silentBaseOtCount();
-    std::vector<std::array<block, 2>> msg2(count);
+
+    u64 scaler = 2;
+    
+    // fake base OTs for receiver.
+    if (recver.mMultType != MultType::ExConv7x24)
+        throw std::invalid_argument("recver.mMultType != MultType::ExConv7x24 " LOCATION);
+    recver.configure(numOTs, scaler, threads);
+    BitVector choices = recver.sampleBaseChoiceBits(prng);
+    std::vector<block> msg(choices.size());
+    for (u64 i = 0; i < msg.size(); ++i)
+        msg[i] = prng.get();
+    recver.setSilentBaseOts(msg);
+
+    // Make sure that MultType is ExConv7x24
+    if (sender.mMultType != MultType::ExConv7x24)
+        throw std::invalid_argument("sender.mMultType != MultType::ExConv7x24 " LOCATION);
+
+    if (verbose) {
+        cout << "fakeBase: starting..." << endl;
+        cout << "fakeBase: numOTs : " << numOTs << endl;
+        cout << "fakeBase: threads: " << threads << endl;
+    }
+    
+    // The following performs: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //      sender.configure(numOTs, scaler, threads);
+    sender.mRequestNumOts = numOTs;
+    sender.mNumThreads    = threads;
+    sender.mMalType = SilentSecType::SemiHonest;
+    u64 secParam    = 128;
+    double minDist  = 0.15;
+    sender.mNumPartitions = getRegNoiseWeight(minDist, numOTs * scaler, secParam);
+    sender.mSizePer = \
+        std::max<u64>(
+            4, 
+            roundUpTo(
+                divCeil(
+                    numOTs * scaler, 
+                    sender.mNumPartitions
+                ), 
+                2
+            )
+        );
+    
+    sender.mNoiseVecSize = sender.mSizePer * sender.mNumPartitions;
+    //      The following performs: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //          sender.mGen.configure(sender.mSizePer, sender.mNumPartitions);
+    if (sender.mSizePer & 1)
+        throw std::runtime_error("Pprf domain (mSizePer) must be even. " LOCATION);
+    if (sender.mSizePer < 2)
+        throw std::runtime_error("Pprf domain (mSizePer) must must be at least 2. " LOCATION);
+    sender.mGen.mDomain = sender.mSizePer;
+    sender.mGen.mDepth = log2ceil(sender.mSizePer);
+    sender.mGen.mPntCount = sender.mNumPartitions;
+    sender.mGen.mBaseOTs.resize(0, 0);
+    //      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    if (verbose) {
+        cout << "fakeBase: sender.mNumPartitions: " << sender.mNumPartitions << endl;
+        cout << "fakeBase: sender.mSizePer      : " << sender.mSizePer << endl;
+        cout << "fakeBase: sender.mNoiseVecSize : " << sender.mNoiseVecSize << endl;
+    }
+
+    auto numBaseOTs = sender.mGen.mDepth * sender.mGen.mPntCount;
+    std::vector<std::array<block, 2>> msg2(numBaseOTs);
     for (u64 i = 0; i < msg2.size(); ++i)
     {
-        msg2[i][0] = prng.get();
-        msg2[i][1] = prng.get();
+        msg2[i][choices[i]] = msg[i];
+        msg2[i][1 - choices[i]] = prng.get();
     }
     sender.setSilentBaseOts(msg2);
 
-    // fake base OTs.
-    {
-        recver.configure(n, s, threads);
-        BitVector choices = recver.sampleBaseChoiceBits(prng);
-        std::vector<block> msg(choices.size());
-        for (u64 i = 0; i < msg.size(); ++i)
-            msg[i] = msg2[i][choices[i]];
-        recver.setSilentBaseOts(msg);
-    }
 }
 
 void checkRandom(span<block> messages, span<std::array<block, 2>>messages2,
@@ -261,42 +352,172 @@ void silent_ot_test(CLP& cmd)
 
     auto numThreads = cmd.getOr("t", 4);
     bool verbose = (cmd.getOr("v", 0) >= 1);
-    u64 scaler = cmd.getOr("s", 2);
+    u64 scaler = 2;
 
     PRNG prng(toBlock(cmd.getOr("seed", 0)));
     PRNG prng1(toBlock(cmd.getOr("seed1", 1)));
 
-    SilentOtExtSenderTest sender;
+    /*  
+    The code in:
+        1. Silent OT: Receiver Setup -> Base OT
+        2. Silent OT: Sender Setup -> Base OT
+
+    Performs the following function call: 
+        fakeBaseExConv7x24(numOTs, numThreads, prng, recver, sender, verbose);
+    */
+
+    // ========================================================
+    // Silent OT: Receiver Setup -> Base OT
+    // ========================================================
     SilentOtExtReceiver recver;
+    // Receiver LDPC-Compress type
+    recver.mMultType = MultType::ExConv7x24;
+    /*
+    Receiver's Configuration:
+        recver.configure(numOTs, scaler, numThreads);
+    */
+    recver.mMalType = SilentSecType::SemiHonest;
+    recver.mNumThreads = numThreads;
+    recver.mRequestNumOts = numOTs;
+    // u64 secParam    = 128;
+    // double minDist  = 0.15;
+    // auto t = max<u64>(40, -double(secParam) / log2(1 - 2 * minDist));
+    // if(numOTs * scaler < 512) t = max<u64>(t, 64);
+    // recver.mNumPartitions = roundUpTo(t, 8);
+    recver.mNumPartitions = 256;
+    recver.mSizePer = \
+        std::max<u64>(
+            4, 
+            roundUpTo(
+                divCeil(
+                    numOTs * scaler, 
+                    recver.mNumPartitions
+                ), 
+                2
+            )
+        );
 
+    recver.mNoiseVecSize = recver.mSizePer * recver.mNumPartitions;
+    recver.mS.resize(recver.mNumPartitions);
+
+    /*  
+    Set up parameters for Receiver's PPRF-Expand:
+        recver.mGen.configure(recver.mSizePer, recver.mNumPartitions);
+    */
+    if (recver.mSizePer & 1)
+        throw std::runtime_error("Pprf domain (mSizePer) must be even. " LOCATION);
+    if (recver.mSizePer < 2)
+        throw std::runtime_error("Pprf domain (mSizePer) must must be at least 2. " LOCATION);
+    
+    recver.mGen.mDomain = recver.mSizePer;
+    recver.mGen.mDepth = log2ceil(recver.mSizePer);
+    recver.mGen.mPntCount = recver.mNumPartitions;
+
+    if (verbose){
+        // Print Receiver's Configuration
+        cout << "recver.mGen.mDomain  : " << recver.mGen.mDomain   << endl;
+        cout << "recver.mGen.mDepth   : " << recver.mGen.mDepth    << endl;
+        cout << "recver.mGen.mPntCount: " << recver.mGen.mPntCount << endl;
+    }
+
+    // Receiver Base OTs
+    BitVector baseChoices = recver.sampleBaseChoiceBits(prng);
+    std::vector<block> baseOTs_r(baseChoices.size());
+    for (u64 i = 0; i < baseOTs_r.size(); ++i)
+        baseOTs_r[i] = prng.get();
+    recver.setSilentBaseOts(baseOTs_r);
+    // The receiver gets 1 message (block) for every OT.
+    std::vector<block> OTs_r(numOTs);
+    BitVector choice(numOTs);
+    // ========================================================
+
+
+    // ========================================================
+    // Silent OT: Sender Setup -> Base OT
+    // ========================================================
+    SilentOtExtSenderTest sender;
+    // Sender LDPC-Compress type:
+    sender.mMultType = MultType::ExConv7x24;
     sender.setVerbose(verbose);
+    /*
+    Sender's Configuration:
+        sender.configure(numOTs, scaler, threads);
+    */
+    sender.mRequestNumOts = numOTs;
+    sender.mNumThreads    = numThreads;
+    sender.mMalType = SilentSecType::SemiHonest;
+    // u64 secParam    = 128;
+    // double minDist  = 0.15;
+    // auto t = max<u64>(40, -double(secParam) / log2(1 - 2 * minDist));
+    // if(numOTs * scaler < 512) t = max<u64>(t, 64);
+    // sender.mNumPartitions = roundUpTo(t, 8);
+    sender.mNumPartitions = 256;
+    sender.mSizePer = \
+        std::max<u64>(
+            4, 
+            roundUpTo(
+                divCeil(
+                    numOTs * scaler, 
+                    sender.mNumPartitions
+                ), 
+                2
+            )
+        );
+    
+    sender.mNoiseVecSize = sender.mSizePer * sender.mNumPartitions;
 
-    sender.mMultType = recver.mMultType = MultType::ExConv7x24;
-
-    // We need delta only for COT.
-    // block delta = prng.get();
+    /*  
+    Set up parameters for Sender's PPRF-Expand:
+        sender.mGen.configure(sender.mSizePer, sender.mNumPartitions);
+    */
+    if (sender.mSizePer & 1)
+        throw std::runtime_error("Pprf domain (mSizePer) must be even. " LOCATION);
+    if (sender.mSizePer < 2)
+        throw std::runtime_error("Pprf domain (mSizePer) must must be at least 2. " LOCATION);
+    
+    sender.mGen.mDomain = sender.mSizePer;
+    sender.mGen.mDepth = log2ceil(sender.mSizePer);
+    sender.mGen.mPntCount = sender.mNumPartitions;
+    if (verbose){
+        // Print Sender's Configuration
+        cout << "sender.mGen.mDomain  : " << sender.mGen.mDomain << endl;
+        cout << "sender.mGen.mDepth   : " << sender.mGen.mDepth << endl;
+        cout << "sender.mGen.mPntCount: " << sender.mGen.mPntCount << endl;
+    }
+    // Sender Base OTs
+    sender.mGen.mBaseOTs.resize(0, 0);
+    auto numBaseOTs = sender.mGen.mDepth * sender.mGen.mPntCount;
+    std::vector<std::array<block, 2>> baseOTs_s(numBaseOTs);
+    for (u64 i = 0; i < baseOTs_s.size(); ++i)
+    {
+        baseOTs_s[i][  baseChoices[i]  ] = baseOTs_r[i];
+        baseOTs_s[i][1 - baseChoices[i]] = prng.get();
+    }
+    sender.setSilentBaseOts(baseOTs_s);
     
     // The sender supplies (gets) 2 messages for every COT (ROT).
-    std::vector<std::array<block, 2>> msg_s(numOTs);
+    std::vector<std::array<block, 2>> OTs_s(numOTs);
+    // ========================================================
 
-    // The receiver gets 1 message for every OT.
-    std::vector<block> msg_r(numOTs);
-    BitVector choice(numOTs);
 
-    fakeBase(numOTs, scaler, numThreads, prng, recver, sender);
-
+    // ========================================================
+    // Silent OT: PPRF-Expand -> ExConv-Compress -> hash
+    // ========================================================
     Timer timer;
     auto start = timer.setTimePoint("start");
     
-    auto p0 = sender.silentSendTest(msg_s, prng, sockets[0]);
-    auto p1 = recver.silentReceive(choice, msg_r, prng, sockets[1]);
+    auto p0 = sender.silentSendTest(OTs_s, prng, sockets[0]);
+    auto p1 = recver.silentReceive(choice, OTs_r, prng, sockets[1]);
 
     eval(p0, p1);
+    // ========================================================
+
+
     
     auto end = timer.setTimePoint("end");
     auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    checkRandom(msg_r, msg_s, choice, numOTs, true);
+    checkRandom(OTs_r, OTs_s, choice, numOTs, true);
 
     u64 com = sockets[0].bytesReceived() + sockets[0].bytesSent();
 
