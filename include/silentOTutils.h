@@ -347,6 +347,7 @@ void silent_ot_test(CLP& cmd)
     auto numOTs = cmd.isSet("nn")
         ? (1 << cmd.get<int>("nn"))
         : cmd.getOr("n", 0);
+
     
     if (numOTs == 0) numOTs = 1 << 20;
 
@@ -356,6 +357,18 @@ void silent_ot_test(CLP& cmd)
 
     PRNG prng(toBlock(cmd.getOr("seed", 0)));
     PRNG prng1(toBlock(cmd.getOr("seed1", 1)));
+
+    u64 pprf_ggm_depth = cmd.getOr("d", 15);
+
+    bool run_d3_nn5 = cmd.isSet("d3_nn5");
+    if (run_d3_nn5){
+        cout << "Running d3_nn6 | PPRF GGM-tree depth = 3 | PPRF-Expand output size = 64" << endl;
+        verbose = true;
+        numOTs = 1 << 5;
+        pprf_ggm_depth = 3;
+    }
+
+    u64 pprf_num_partitions = (numOTs * scaler) / (1 << pprf_ggm_depth);
 
     /*  
     The code in:
@@ -383,8 +396,8 @@ void silent_ot_test(CLP& cmd)
     // double minDist  = 0.15;
     // auto t = max<u64>(40, -double(secParam) / log2(1 - 2 * minDist));
     // if(numOTs * scaler < 512) t = max<u64>(t, 64);
-    // recver.mNumPartitions = roundUpTo(t, 8);
-    recver.mNumPartitions = 256;
+    // recver.mNumPartitions = roundUpTo(t, 8); // this is 248
+    recver.mNumPartitions = pprf_num_partitions;
     recver.mSizePer = \
         std::max<u64>(
             4, 
@@ -450,8 +463,8 @@ void silent_ot_test(CLP& cmd)
     // double minDist  = 0.15;
     // auto t = max<u64>(40, -double(secParam) / log2(1 - 2 * minDist));
     // if(numOTs * scaler < 512) t = max<u64>(t, 64);
-    // sender.mNumPartitions = roundUpTo(t, 8);
-    sender.mNumPartitions = 256;
+    // sender.mNumPartitions = roundUpTo(t, 8); // this is 248
+    sender.mNumPartitions = pprf_num_partitions;
     sender.mSizePer = \
         std::max<u64>(
             4, 
