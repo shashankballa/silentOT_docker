@@ -12,8 +12,11 @@ int main(int argc, char** argv){
     // Tests ExConvCode
     //ExConvCode_tester(cmd);
     
+    // Tests only the sender side of silent OT (offline)
+    silent_ot_sender_offline_test(cmd);
+    
     // Tests silent Random OT
-    silent_ot_test(cmd);
+    // silent_ot_test(cmd);
 
     return 0;
 }
