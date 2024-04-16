@@ -63,7 +63,7 @@ This repository contains a Dockerized implementation of the Silent Oblivious Tra
     Run `main` with desired options:
 
     ```
-    ./main -v 1 -nn 20
+    ./main -v 1 -nn 10
     ```
 
 
